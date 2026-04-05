@@ -13,3 +13,10 @@ vite.config.ts
 .github/**
 coverage/**
 *.Jenkinsfile
+AGENT_INSTRUCTIONS.md
+PROMPT_AGENT.md
+vitest.config.ts
+part3-webview-tests/**
+_*.ts
+writeParser.js
+.history/**
