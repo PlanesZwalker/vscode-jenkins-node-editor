@@ -1,0 +1,412 @@
+// src/parser/JenkinsfileParser.ts
+// Jenkinsfile -> GraphModel (declarative & basic scripted)
+
+import type {
+  GraphModel, JenkinsNode, JenkinsEdge, NodeKind, EnvironmentData,
+} from '../shared/types';
+import { applyDagreLayout } from './layout';
+
+type ParseError = { line: number; column: number; message: string; severity: 'error' | 'warning'; };
+type ParseResult = { graph: GraphModel; errors: ParseError[]; mode: 'declarative' | 'scripted'; };
+type Block = { keyword: string; args: string; body: string; startLine: number; endLine: number; children: Block[]; };
+
+let _nodeCounter = 0;
+function nextId(prefix: string): string { return `${prefix}-${++_nodeCounter}`; }
+
+// ─── Main class ──────────────────────────────────────────────────────────────
+
+export class JenkinsfileParser {
+  async parse(source: string): Promise<ParseResult> {
+    _nodeCounter = 0;
+    const errors: ParseError[] = [];
+    const mode = detectMode(source);
+    if (!source.trim()) {
+      errors.push({ line: 1, column: 0, message: 'Empty Jenkinsfile', severity: 'error' });
+      return { graph: { nodes: [], edges: [], meta: { declarative: false } }, errors, mode };
+    }
+    const depth = countBraceDepth(source);
+    if (depth !== 0) {
+      errors.push({
+        line: 0, column: 0,
+        message: `Unbalanced braces: ${depth > 0 ? depth + ' block(s) not closed' : 'unexpected closing brace'}`,
+        severity: 'error',
+      });
+    }
+    try {
+      let graph: GraphModel;
+      if (mode === 'declarative') { graph = parseDeclarative(source, errors); }
+      else { graph = parseScripted(source, errors); }
+      const hasPositions = graph.nodes.some(n => n.position.x !== 0 || n.position.y !== 0);
+      if (!hasPositions && graph.nodes.length > 0) {
+        graph = { ...graph, nodes: applyDagreLayout(graph.nodes, graph.edges) };
+      }
+      return { graph, errors, mode };
+    } catch (err) {
+      errors.push({ line: 0, column: 0, message: `Parse failed: ${err instanceof Error ? err.message : String(err)}`, severity: 'error' });
+      return { graph: { nodes: [], edges: [], meta: { declarative: mode === 'declarative' } }, errors, mode };
+    }
+  }
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function countBraceDepth(source: string): number {
+  let depth = 0; let i = 0;
+  while (i < source.length) {
+    const ch = source[i];
+    if (ch === '/' && source[i+1] === '/') { while (i < source.length && source[i] !== '\n') i++; }
+    else if (ch === '/' && source[i+1] === '*') {
+      i += 2;
+      while (i < source.length - 1 && !(source[i] === '*' && source[i+1] === '/')) i++;
+      i++;
+    } else if (ch === "'" || ch === '"') {
+      const triple = source.slice(i, i+3);
+      if (triple === "'''" || triple === '"""') {
+        i += 3; while (i <= source.length - 3 && source.slice(i, i+3) !== triple) i++; i += 2;
+      } else {
+        const q = ch; i++;
+        while (i < source.length && source[i] !== q && source[i] !== '\n') { if (source[i] === '\\') i++; i++; }
+      }
+    } else if (ch === '{') { depth++; } else if (ch === '}') { depth--; }
+    i++;
+  }
+  return depth;
+}
+
+export function detectMode(source: string): 'declarative' | 'scripted' {
+  return /^\s*pipeline\s*\{/.test(source) ? 'declarative' : 'scripted';
+}
+
+export function tokenizeBlocks(source: string): Block[] {
+  const roots: Block[] = [];
+  const stack: Array<{ block: Block; bodyStart: number }> = [];
+  let line = 1; let i = 0;
+
+  function skipString(start: number): number {
+    let j = start;
+    const triple = source.slice(j, j+3);
+    if (triple === "'''" || triple === '"""') {
+      j += 3;
+      while (j <= source.length - 3) { if (source[j] === '\n') line++; if (source.slice(j, j+3) === triple) return j+3; j++; }
+      return j;
+    }
+    const q = source[j]; j++;
+    while (j < source.length && source[j] !== q && source[j] !== '\n') { if (source[j] === '\\') j++; j++; }
+    return j < source.length ? j+1 : j;
+  }
+
+  while (i < source.length) {
+    const ch = source[i];
+    if (ch === '/' && source[i+1] === '/') { while (i < source.length && source[i] !== '\n') i++; continue; }
+    if (ch === '/' && source[i+1] === '*') {
+      i += 2;
+      while (i < source.length - 1) { if (source[i] === '\n') line++; if (source[i] === '*' && source[i+1] === '/') { i += 2; break; } i++; }
+      continue;
+    }
+    if (ch === "'" || ch === '"') { i = skipString(i); continue; }
+    if (ch === '{') {
+      const parentBodyStart = stack.length > 0 ? stack[stack.length-1].bodyStart : 0;
+      const kw = extractLastKeyword(source.slice(parentBodyStart, i));
+      const block: Block = { keyword: kw.keyword, args: kw.args, body: '', startLine: line, endLine: 0, children: [] };
+      if (stack.length > 0) { stack[stack.length-1].block.children.push(block); } else { roots.push(block); }
+      stack.push({ block, bodyStart: i+1 }); i++; continue;
+    }
+    if (ch === '}') {
+      if (stack.length > 0) {
+        const { block, bodyStart } = stack.pop()!;
+        block.body = source.slice(bodyStart, i); block.endLine = line;
+        if (stack.length > 0) stack[stack.length-1] = { ...stack[stack.length-1], bodyStart: i+1 };
+      }
+      i++; continue;
+    }
+    if (ch === '\n') line++;
+    i++;
+  }
+  // EOF: close remaining open blocks (handles partial / unbalanced input)
+  while (stack.length > 0) {
+    const { block, bodyStart } = stack.pop()!;
+    block.body = source.slice(bodyStart); block.endLine = line;
+    if (stack.length > 0) stack[stack.length-1] = { ...stack[stack.length-1], bodyStart: source.length };
+  }
+  return roots;
+}
+
+function extractLastKeyword(segment: string): { keyword: string; args: string } {
+  const lines = segment.split('\n');
+  let lastLine = '';
+  for (let l = lines.length - 1; l >= 0; l--) {
+    const t = lines[l].trim();
+    if (t && !t.startsWith('//') && !t.startsWith('*')) { lastLine = t; break; }
+  }
+  const withArgs = lastLine.match(/(\w[\w.]*)\s*\(([^)]*)\)\s*$/);
+  if (withArgs) return { keyword: withArgs[1], args: withArgs[2].trim() };
+  const wordAtEnd = lastLine.match(/(\w[\w.]*)\s*$/);
+  if (wordAtEnd) return { keyword: wordAtEnd[1], args: '' };
+  return { keyword: lastLine.trim(), args: '' };
+}
+
+// ─── Declarative parser ───────────────────────────────────────────────────────
+
+function parseDeclarative(source: string, errors: ParseError[]): GraphModel {
+  const blocks = tokenizeBlocks(source);
+  const pipelineBlock = blocks.find(b => b.keyword === 'pipeline');
+  if (!pipelineBlock) {
+    errors.push({ line: 1, column: 0, message: 'No pipeline { } block found', severity: 'error' });
+    return { nodes: [], edges: [], meta: { declarative: true } };
+  }
+  const nodes: JenkinsNode[] = []; const edges: JenkinsEdge[] = [];
+  const meta: GraphModel['meta'] = { declarative: true };
+  const pipelineNode = makeNode('pipeline', 'pipeline', { kind: 'pipeline' });
+  nodes.push(pipelineNode);
+
+  // Agent
+  const agentBlock = pipelineBlock.children.find(c => c.keyword === 'agent');
+  if (agentBlock) {
+    const an = makeNode('agent', 'agent', parseAgent(agentBlock.body));
+    nodes.push(an); edges.push(makeEdge(pipelineNode.id, an.id, 'contains'));
+  } else {
+    const im = pipelineBlock.body.match(/^\s*agent\s+(any|none)\s*$/m);
+    if (im) {
+      const an = makeNode('agent', 'agent', { type: im[1] });
+      nodes.push(an); edges.push(makeEdge(pipelineNode.id, an.id, 'contains'));
+    }
+  }
+
+  // Environment / options / parameters / triggers
+  const envBlock = pipelineBlock.children.find(c => c.keyword === 'environment');
+  if (envBlock) meta.environment = { variables: parseEnvVars(envBlock.body) } as EnvironmentData;
+  const optBlock = pipelineBlock.children.find(c => c.keyword === 'options');
+  if (optBlock) meta.options = parseOptions(optBlock.body, optBlock.children) as GraphModel['meta']['options'];
+  const paramsBlock = pipelineBlock.children.find(c => c.keyword === 'parameters');
+  if (paramsBlock) meta.parameters = parseParameters(paramsBlock.body) as GraphModel['meta']['parameters'];
+  const triggersBlock = pipelineBlock.children.find(c => c.keyword === 'triggers');
+  if (triggersBlock) meta.triggers = parseTriggers(triggersBlock.body) as GraphModel['meta']['triggers'];
+
+  // Stages
+  const stagesBlock = pipelineBlock.children.find(c => c.keyword === 'stages');
+  if (stagesBlock) {
+    let prevId = pipelineNode.id;
+    for (const sb of stagesBlock.children) {
+      if (sb.keyword === 'stage') {
+        const r = buildStageNodes(sb, prevId, errors);
+        nodes.push(...r.nodes); edges.push(...r.edges); prevId = r.lastId;
+      }
+    }
+  }
+
+  // Post
+  const postBlock = pipelineBlock.children.find(c => c.keyword === 'post');
+  if (postBlock) {
+    const VALID = ['always', 'success', 'failure', 'unstable', 'changed', 'aborted', 'cleanup'];
+    for (const cb of postBlock.children) {
+      if (!VALID.includes(cb.keyword)) continue;
+      const pn = makeNode('post', `post: ${cb.keyword}`, { condition: cb.keyword, kind: 'post' });
+      nodes.push(pn); edges.push(makeEdge(pipelineNode.id, pn.id, 'contains'));
+      for (const sl of getSimpleLines(cb.body)) {
+        const sd = parseStep(sl); if (!sd) continue;
+        const sn = makeNode('step', String(sd['type'] ?? 'step'), { ...sd, kind: 'step' });
+        nodes.push(sn); edges.push(makeEdge(pn.id, sn.id, 'contains'));
+      }
+    }
+  }
+
+  return { nodes, edges, meta };
+}
+
+function buildStageNodes(
+  block: Block, prevId: string, errors: ParseError[],
+): { nodes: JenkinsNode[]; edges: JenkinsEdge[]; lastId: string } {
+  const nodes: JenkinsNode[] = []; const edges: JenkinsEdge[] = [];
+  const stageName = extractStringArg(block.args);
+  const data: Record<string, unknown> = { name: stageName, label: stageName, kind: 'stage', sourceLine: block.startLine };
+  const ab = block.children.find(c => c.keyword === 'agent'); if (ab) data['agent'] = parseAgent(ab.body);
+  const wb = block.children.find(c => c.keyword === 'when'); if (wb) data['when'] = parseWhen(wb.body);
+  if (/failFast\s+true/.test(block.body)) data['failFast'] = true;
+  const stageNode = makeNode('stage', stageName, data);
+  nodes.push(stageNode); edges.push(makeEdge(prevId, stageNode.id, 'sequence'));
+
+  const stepsBlock = block.children.find(c => c.keyword === 'steps');
+  const parallelBlock = block.children.find(c => c.keyword === 'parallel')
+    ?? stepsBlock?.children.find(c => c.keyword === 'parallel');
+
+  if (parallelBlock) {
+    const branchNames: string[] = [];
+    for (const bb of parallelBlock.children) {
+      if (bb.keyword !== 'stage') continue;
+      branchNames.push(extractStringArg(bb.args));
+      const r = buildStageNodes(bb, stageNode.id, errors);
+      if (r.edges.length > 0) r.edges[0] = { ...r.edges[0], type: 'parallel' };
+      nodes.push(...r.nodes); edges.push(...r.edges);
+    }
+    const pn = makeNode('parallel', 'parallel', { branches: branchNames, kind: 'parallel' });
+    nodes.push(pn); edges.push(makeEdge(stageNode.id, pn.id, 'contains'));
+  } else if (stepsBlock) {
+    for (const sl of getSimpleLines(stepsBlock.body)) {
+      const sd = parseStep(sl); if (!sd) continue;
+      const sn = makeNode('step', String(sd['type'] ?? 'step'), { ...sd, kind: 'step' });
+      nodes.push(sn); edges.push(makeEdge(stageNode.id, sn.id, 'contains'));
+    }
+    const BSMAP: Record<string, string> = {
+      timeout: 'timeout', retry: 'retry', withcredentials: 'withCredentials',
+      withenv: 'withEnv', script: 'script', docker: 'docker.build',
+    };
+    for (const child of stepsBlock.children) {
+      if (child.keyword === 'parallel') continue;
+      const kl = child.keyword.toLowerCase().replace(/\s*\(.*$/, '');
+      const st = BSMAP[kl] ?? child.keyword;
+      const sn = makeNode('step', st, { type: st, kind: 'step', rawContent: child.body });
+      nodes.push(sn); edges.push(makeEdge(stageNode.id, sn.id, 'contains'));
+    }
+  }
+  return { nodes, edges, lastId: stageNode.id };
+}
+
+// ─── Scripted (basic) ─────────────────────────────────────────────────────────
+
+function parseScripted(source: string, errors: ParseError[]): GraphModel {
+  errors.push({ line: 0, column: 0, message: 'Scripted pipeline: partial support only', severity: 'warning' });
+  const nodes: JenkinsNode[] = []; const edges: JenkinsEdge[] = [];
+  const blocks = tokenizeBlocks(source);
+  const nb = blocks.find(b => b.keyword === 'node') ?? blocks[0];
+  if (!nb) return { nodes, edges, meta: { declarative: false } };
+  const pn = makeNode('pipeline', 'pipeline', { kind: 'pipeline' });
+  nodes.push(pn); let prevId = pn.id;
+  for (const child of nb.children) {
+    if (child.keyword === 'stage') {
+      const name = extractStringArg(child.args);
+      const sn = makeNode('stage', name, { name, label: name, kind: 'stage' });
+      nodes.push(sn); edges.push(makeEdge(prevId, sn.id, 'sequence')); prevId = sn.id;
+    }
+  }
+  return { nodes, edges, meta: { declarative: false } };
+}
+
+// ─── Exported specialised parsers ────────────────────────────────────────────
+
+export function parseAgent(body: string): Record<string, unknown> {
+  const t = body.trim();
+  if (!t || t === 'any') return { type: 'any' };
+  if (t === 'none') return { type: 'none' };
+  const imageM = t.match(/image\s+['"]([^'"]+)['"]/);
+  if (imageM) {
+    const argsM = t.match(/args\s+['"]([^'"]+)['"]/);
+    return { type: 'docker', image: imageM[1], args: argsM?.[1] };
+  }
+  if (/dockerfile/.test(t)) {
+    const fm = t.match(/filename\s+['"]([^'"]+)['"]/);
+    return { type: 'dockerfile', filename: fm?.[1] ?? 'Dockerfile' };
+  }
+  const labelM = t.match(/label\s+['"]([^'"]+)['"]/);
+  if (labelM) return { type: 'label', label: labelM[1] };
+  return { type: 'any' };
+}
+
+export function parseStep(line: string): Record<string, unknown> | null {
+  const t = line.trim();
+  if (!t || t.startsWith('//') || t === '}' || t === '{') return null;
+  const shS = t.match(/^sh\s+(['"])(.*?)\1\s*$/s); if (shS) return { type: 'sh', script: shS[2] };
+  const shN = t.match(/^sh\s*\(\s*script:\s*(['"])(.*?)\1/s);
+  if (shN) return { type: 'sh', script: shN[2], returnStdout: /returnStdout\s*:\s*true/.test(t) };
+  const echoM = t.match(/^echo\s+(['"])(.*?)\1/s); if (echoM) return { type: 'echo', message: echoM[2] };
+  const gitUrl = t.match(/^git\s+url:\s*['"]([^'"]+)['"]/);
+  if (gitUrl) {
+    const br = t.match(/branch:\s*['"]([^'"]+)['"]/);
+    return { type: 'git', url: gitUrl[1], branch: br?.[1] ?? 'main' };
+  }
+  if (/^checkout\s+scm/.test(t)) return { type: 'checkout', url: 'scm' };
+  const archN = t.match(/^archiveArtifacts\s+artifacts:\s*['"]([^'"]+)['"]/); if (archN) return { type: 'archiveArtifacts', artifacts: archN[1] };
+  const archS = t.match(/^archiveArtifacts\s+['"]([^'"]+)['"]/); if (archS) return { type: 'archiveArtifacts', artifacts: archS[1] };
+  const jS = t.match(/^junit\s+['"]([^'"]+)['"]/); if (jS) return { type: 'junit', pattern: jS[1] };
+  const jN = t.match(/^junit\s+\w+:\s*['"]([^'"]+)['"]/); if (jN) return { type: 'junit', pattern: jN[1] };
+  const toI = t.match(/^timeout\s*\(\s*time:\s*(\d+)(?:,\s*unit:\s*['"](\w+)['"])?/);
+  if (toI) return { type: 'timeout', time: parseInt(toI[1]), unit: toI[2] ?? 'MINUTES' };
+  const reI = t.match(/^retry\s*\(\s*(\d+)\s*\)/); if (reI) return { type: 'retry', count: parseInt(reI[1]) };
+  if (/^cleanWs\s*\(/.test(t)) return { type: 'custom', rawContent: t };
+  const GKW = new Set(['if', 'else', 'for', 'while', 'def', 'return', 'throw', 'try', 'catch', 'finally', 'switch', 'case', 'import', 'class']);
+  const gFn = t.match(/^(\w[\w.]*)\s*\(/); if (gFn && !GKW.has(gFn[1])) return { type: 'custom', rawContent: t };
+  const gStr = t.match(/^(\w[\w.]*)\s+['"].+/); if (gStr && !GKW.has(gStr[1])) return { type: 'custom', rawContent: t };
+  return null;
+}
+
+export function parseWhen(body: string): Record<string, unknown> {
+  const t = body.trim();
+  if (!t) return { type: 'expression', value: '' };
+  const brM = t.match(/^\s*branch\s+['"]([^'"]+)['"]/m); if (brM) return { type: 'branch', value: brM[1] };
+  const envM = t.match(/environment\s+name:\s*['"]([^'"]+)['"],\s*value:\s*['"]([^'"]+)['"]/);
+  if (envM) return { type: 'environment', name: envM[1], value: envM[2] };
+  const exM = t.match(/expression\s*\{([\s\S]*)\}/); if (exM) return { type: 'expression', value: exM[1].trim() };
+  if (/anyOf/.test(t)) return { type: 'anyOf', conditions: [] };
+  if (/allOf/.test(t)) return { type: 'allOf', conditions: [] };
+  if (/not\s*\{/.test(t)) return { type: 'not', conditions: [] };
+  if (/^\s*tag\s/.test(t)) return { type: 'tag', value: t.match(/tag\s+['"]([^'"]+)['"]/)?.[1] ?? '' };
+  return { type: 'expression', value: t };
+}
+
+// ─── Meta parsers ─────────────────────────────────────────────────────────────
+
+function parseEnvVars(body: string): Array<{ key: string; value: string; isSecret?: boolean }> {
+  const r: Array<{ key: string; value: string; isSecret?: boolean }> = [];
+  for (const raw of body.split('\n')) {
+    const t = raw.trim(); if (!t || t.startsWith('//')) continue;
+    const credM = t.match(/^(\w+)\s*=\s*credentials\s*\(\s*['"]([^'"]+)['"]\s*\)/);
+    if (credM) { r.push({ key: credM[1], value: credM[2], isSecret: true }); continue; }
+    const kv = t.match(/^(\w+)\s*=\s*['"]([^'"]*)['"]/);
+    if (kv) r.push({ key: kv[1], value: kv[2] });
+  }
+  return r;
+}
+
+function parseOptions(body: string, children: Block[] = []): Record<string, unknown> {
+  const c = body + '\n' + children.map(x => x.keyword + ' ' + x.body).join('\n');
+  const o: Record<string, unknown> = {};
+  const to = c.match(/timeout\s*\(\s*time:\s*(\d+)\s*,\s*unit:\s*['"](\w+)['"]\s*\)/);
+  if (to) o['timeout'] = { time: parseInt(to[1]), unit: to[2] };
+  if (/disableConcurrentBuilds/.test(c)) o['disableConcurrentBuilds'] = true;
+  if (/skipDefaultCheckout/.test(c)) o['skipDefaultCheckout'] = true;
+  const nk = c.match(/numToKeepStr\s*:\s*['"](\d+)['"]/); if (nk) o['buildDiscarder'] = { numToKeepStr: nk[1] };
+  return o;
+}
+
+function parseParameters(body: string): Array<Record<string, unknown>> {
+  const p: Array<Record<string, unknown>> = [];
+  for (const raw of body.split('\n')) {
+    const t = raw.trim(); if (!t) continue;
+    const nM = t.match(/name:\s*['"](\w+)['"]/); if (!nM) continue;
+    const dM = t.match(/defaultValue:\s*['"]([^'"]*)['"]/);
+    const descM = t.match(/description:\s*['"]([^'"]*)['"]/);
+    const tM = t.match(/^(string|booleanParam|choice|text|password)\s*\(/);
+    p.push({ type: tM?.[1] ?? 'string', name: nM[1], defaultValue: dM?.[1] ?? '', description: descM?.[1] ?? '' });
+  }
+  return p;
+}
+
+function parseTriggers(body: string): Array<Record<string, unknown>> {
+  const r: Array<Record<string, unknown>> = [];
+  const cron = body.match(/cron\s*\(\s*['"]([^'"]+)['"]\s*\)/); if (cron) r.push({ type: 'cron', schedule: cron[1] });
+  const poll = body.match(/pollSCM\s*\(\s*['"]([^'"]+)['"]\s*\)/); if (poll) r.push({ type: 'pollSCM', schedule: poll[1] });
+  return r;
+}
+
+// ─── Graph helpers ────────────────────────────────────────────────────────────
+
+function makeNode(kind: NodeKind, label: string, data: Record<string, unknown>): JenkinsNode {
+  return { id: nextId(kind), kind, label, data, position: { x: 0, y: 0 } };
+}
+
+function makeEdge(source: string, target: string, type: JenkinsEdge['type'] = 'sequence'): JenkinsEdge {
+  return { id: `edge-${source}-${target}`, source, target, type };
+}
+
+function extractStringArg(args: string): string {
+  const m = args.match(/['"]([^'"]+)['"]/); return m ? m[1] : args.replace(/['"]/g, '').trim();
+}
+
+function getSimpleLines(body: string): string[] {
+  const result: string[] = []; let depth = 0;
+  for (const rawLine of body.split('\n')) {
+    const t = rawLine.trim(); if (!t || t.startsWith('//')) continue;
+    for (const ch of t) { if (ch === '{') depth++; else if (ch === '}') depth--; }
+    if (depth === 0 && !t.endsWith('{') && !t.endsWith('}')) result.push(t);
+  }
+  return result;
+}

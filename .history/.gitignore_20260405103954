@@ -1,0 +1,19 @@
+node_modules/
+dist/
+*.vsix
+coverage/
+.vscode/jenkins-positions-*.json
+*.js.map
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/*.log
+*.code-workspace
+
+# Environment
+.env
+.env.local
+

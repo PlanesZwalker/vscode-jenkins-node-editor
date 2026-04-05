@@ -1,0 +1,21 @@
+// test/runTests.js
+const path = require('path');
+const { runTests } = require('@vscode/test-electron');
+
+async function main() {
+  try {
+    const extensionDevelopmentPath = path.resolve(__dirname, '../');
+    const extensionTestsPath = path.resolve(__dirname, './suite/index');
+
+    await runTests({
+      extensionDevelopmentPath,
+      extensionTestsPath,
+      launchArgs: ['--disable-extensions', '--disable-gpu'],
+    });
+  } catch (err) {
+    console.error('Failed to run extension tests:', err);
+    process.exit(1);
+  }
+}
+
+main();

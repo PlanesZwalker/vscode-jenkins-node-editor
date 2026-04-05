@@ -1,0 +1,189 @@
+/* src/webview/styles/globals.css */
+/* Styles globaux de la webview — thème VSCode via variables CSS */
+
+/* ─── Variables de base ─────────────────────────────────────────────────── */
+:root {
+  /* Fallbacks si les variables VSCode ne sont pas disponibles (dev en navigateur) */
+  --je-bg: #1e1e1e;
+  --je-fg: #d4d4d4;
+  --je-accent: #007acc;
+  --je-border: #3c3c3c;
+  --je-sidebar-bg: #252526;
+  --je-input-bg: #3c3c3c;
+  --je-input-fg: #cccccc;
+  --je-input-border: #3c3c3c;
+  --je-button-bg: #0e639c;
+  --je-button-fg: #ffffff;
+  --je-button-hover-bg: #1177bb;
+  --je-selected-bg: #094771;
+  --je-selected-fg: #ffffff;
+  --je-error: #f48771;
+  --je-warning: #cca700;
+  --je-info: #75beff;
+  --je-terminal-bg: #1e1e1e;
+  --je-terminal-fg: #cccccc;
+  --je-badge-bg: #4d4d4d;
+  --je-badge-fg: #ffffff;
+}
+
+/* ─── Reset de base ─────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--vscode-font-family, 'Segoe UI', system-ui, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  line-height: 1.4;
+  background: var(--je-bg);
+  color: var(--je-fg);
+}
+
+/* ─── Scrollbars ────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--je-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--je-accent);
+}
+
+/* ─── React Flow overrides ──────────────────────────────────────────────── */
+.react-flow__renderer,
+.react-flow__container {
+  background: var(--je-bg) !important;
+}
+
+.react-flow__background {
+  background: var(--je-bg) !important;
+}
+
+.react-flow__background pattern circle,
+.react-flow__background pattern rect {
+  fill: var(--je-border) !important;
+}
+
+.react-flow__minimap {
+  background: var(--je-sidebar-bg) !important;
+  border: 1px solid var(--je-border);
+  border-radius: 4px;
+}
+
+.react-flow__controls {
+  background: var(--je-sidebar-bg) !important;
+  border: 1px solid var(--je-border) !important;
+  border-radius: 4px;
+}
+
+.react-flow__controls-button {
+  background: var(--je-sidebar-bg) !important;
+  border-color: var(--je-border) !important;
+  color: var(--je-fg) !important;
+  fill: var(--je-fg) !important;
+}
+
+.react-flow__controls-button:hover {
+  background: var(--je-selected-bg) !important;
+}
+
+.react-flow__edge-path {
+  stroke: var(--je-accent) !important;
+  stroke-width: 2 !important;
+}
+
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke-dasharray: 5;
+  animation: dashdraw 0.5s linear infinite;
+}
+
+@keyframes dashdraw {
+  to { stroke-dashoffset: -10; }
+}
+
+.react-flow__handle {
+  background: var(--je-accent) !important;
+  border-color: var(--je-bg) !important;
+  width: 10px !important;
+  height: 10px !important;
+}
+
+.react-flow__handle:hover {
+  background: var(--je-button-hover-bg) !important;
+}
+
+/* ─── Composants généraux ───────────────────────────────────────────────── */
+button {
+  background: var(--je-button-bg);
+  color: var(--je-button-fg);
+  border: none;
+  border-radius: 3px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  transition: background 0.15s;
+}
+
+button:hover {
+  background: var(--je-button-hover-bg);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input, textarea, select {
+  background: var(--je-input-bg);
+  color: var(--je-input-fg);
+  border: 1px solid var(--je-input-border);
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: inherit;
+  width: 100%;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: 1px solid var(--je-accent);
+  border-color: var(--je-accent);
+}
+
+label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}
+
+/* ─── Animations d'état ─────────────────────────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.status-running {
+  animation: pulse 1.5s ease-in-out infinite;
+  color: var(--je-warning);
+}
+
+.status-success { color: #4ec9b0; }
+.status-failure { color: var(--je-error); }
+.status-aborted { color: var(--je-badge-fg); }
