@@ -142,22 +142,24 @@ export default function NodeCanvas() {
           position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
           pointerEvents: 'none',
         }}>
-          <div className="bo-welcome" style={{ pointerEvents: 'none' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🔵</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--bo-blue)', marginBottom: 6, letterSpacing: '0.02em' }}>
-              Jenkins Pipeline Editor
+          <div style={{
+            maxWidth: 380, textAlign: 'center', padding: 32,
+            background: 'var(--je-sidebar-bg)', border: '1px solid var(--je-border)',
+            borderRadius: 8, pointerEvents: 'none',
+          }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>🔧</div>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Jenkins Node Editor</div>
+            <div style={{ fontSize: 12, opacity: 0.65, lineHeight: 1.7, marginBottom: 16 }}>
+              The Jenkinsfile is being parsed…<br />
+              If nothing appears, the file may be empty or use an unsupported syntax.
             </div>
-            <div style={{ fontSize: 12, color: 'var(--bo-grey-light)', lineHeight: 1.8, marginBottom: 18 }}>
-              Parsing your Jenkinsfile…<br />
-              If nothing appears, the file may be empty or use unsupported syntax.
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--bo-grey)', textAlign: 'left', background: 'var(--bo-navy)', borderRadius: 6, padding: '12px 16px', lineHeight: 2, border: '1px solid var(--bo-navy-mid)' }}>
-              <div style={{ color: 'var(--bo-blue-bright)', fontWeight: 600, marginBottom: 4 }}>Getting started</div>
-              <div>🖱 <b>Drag</b> from the palette → drop on canvas</div>
-              <div>🖱 <b>Click</b> a node to view and edit its properties</div>
-              <div>🔗 <b>Connect</b> nodes by dragging from a ● handle</div>
-              <div>⌨ <b>Delete</b> key removes the selected node</div>
-              <div>💾 Changes sync to the Jenkinsfile automatically</div>
+            <div style={{ fontSize: 11, opacity: 0.5, textAlign: 'left', background: 'var(--je-input-bg)', borderRadius: 4, padding: '10px 14px', lineHeight: 1.8 }}>
+              <strong>Quick start:</strong><br />
+              • <b>Drag</b> nodes from the left palette onto the canvas<br />
+              • <b>Click</b> a node to edit its properties on the right<br />
+              • <b>Connect</b> nodes by dragging from a handle<br />
+              • <b>Delete</b> key removes a selected node<br />
+              • Changes sync back to the Jenkinsfile automatically
             </div>
           </div>
         </div>

@@ -83,7 +83,7 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
 
     // 2. Setup bus + store
     const bus = new MessageBus(webviewPanel);
-    const posStore = new PositionStore(document.uri);
+    const posStore = new PositionStore(this.context);
     const config = this.getConfig();
     this.activePanels.set(document.uri.toString(), { bus, panel: webviewPanel });
 
@@ -91,7 +91,7 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
     const readyDisposable = bus.on('READY', async () => {
       try {
         const { graph } = await this.parser.parse(document.getText());
-        const saved = await posStore.load();
+        const saved = await posStore.load(document.uri);
         const merged = mergePositions(graph, saved);
         bus.send({ type: 'INIT', graph: merged, theme: mapVSCodeTheme(vscode.window.activeColorTheme.kind), config });
       } catch (err) {
@@ -103,7 +103,7 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
     const graphChangedDisposable = bus.on('GRAPH_CHANGED', async (msg) => {
       if (this.isSyncing) return;
       const positions = extractPositions(msg.graph);
-      await posStore.save(positions);
+      await posStore.save(document.uri, positions);
       await this.applyGraphToDocument(msg.graph, document);
     });
 
@@ -158,7 +158,7 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
       if (this.isSyncing) return;
       try {
         const { graph } = await this.parser.parse(e.document.getText());
-        const saved = await posStore.load();
+        const saved = await posStore.load(document.uri);
         const merged = mergePositions(graph, saved);
         bus.send({ type: 'DOC_CHANGED', graph: merged });
       } catch (err) {
