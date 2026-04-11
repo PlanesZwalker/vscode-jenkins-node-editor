@@ -90,11 +90,9 @@ export const useGraphStore = create<GraphStore>()(
     // ── React Flow handlers ───────────────────────────────────────────
     onNodesChange: (changes) => set(state => {
       state.nodes = applyNodeChanges(changes, state.nodes) as Node[];
-      // Mark dirty on structural changes or when a drag ends (dragging→false)
+      // Marquer dirty seulement pour les changements de données (pas de position seule)
       const hasDirtyChange = changes.some(c =>
-        c.type === 'remove' ||
-        (c.type === 'dimensions' && c.resizing) ||
-        (c.type === 'position' && c.dragging === false)  // drag end only, not during
+        c.type === 'remove' || (c.type === 'dimensions' && c.resizing)
       );
       if (hasDirtyChange) state.isDirty = true;
     }),
