@@ -202,12 +202,7 @@ export const useGraphStore = create<GraphStore>()(
     redo: () => { /* no-op, overridden after store creation */ },
     canUndo: false,
     canRedo: false,
-  })),
-  {
-    // Only diff nodes+edges for undo history; ignore logs/build/UI state
-    partialize: (state) => ({ nodes: state.nodes, edges: state.edges }),
-    limit: 50,
-  })
+  }))
 );
 
 /**

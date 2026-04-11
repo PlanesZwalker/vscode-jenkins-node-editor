@@ -197,29 +197,18 @@ export const useGraphStore = create<GraphStore>()(
     // ── Catalog ───────────────────────────────────────────────────────
     setStepCatalog: (steps) => set(state => { state.stepCatalog = steps; }),
 
-    // ── Undo / redo — implemented via useTemporalStore below ──────────
-    undo: () => { /* no-op, overridden after store creation */ },
-    redo: () => { /* no-op, overridden after store creation */ },
-    canUndo: false,
-    canRedo: false,
+    // ── Undo / redo (delegated to zundo temporal store) ───────────────
+    undo: () => useTemporalStore.getState().undo(),
+    redo: () => useTemporalStore.getState().redo(),
+    get canUndo() { return useTemporalStore.getState().pastStates.length > 0; },
+    get canRedo() { return useTemporalStore.getState().futureStates.length > 0; },
   })),
   {
-    // Only diff nodes+edges for undo history; ignore logs/build/UI state
+    // Only track node/edge changes for undo history; skip logs, build status, UI state
     partialize: (state) => ({ nodes: state.nodes, edges: state.edges }),
     limit: 50,
-  })
+  }
 );
 
-/**
- * Temporal (undo/redo) store — only tracks nodes + edges mutations.
- * Use useTemporalStore().undo() / .redo() or wire via the store actions below.
- */
-export const useTemporalStore = useGraphStore.temporal;
-
-// Patch undo/redo into the main store so consumers can call useGraphStore(s => s.undo)
-useGraphStore.setState({
-  undo: () => useTemporalStore.getState().undo(),
-  redo: () => useTemporalStore.getState().redo(),
-  get canUndo() { return useTemporalStore.getState().pastStates.length > 0; },
-  get canRedo() { return useTemporalStore.getState().futureStates.length > 0; },
-});
+/** Temporal store for undo/redo — exposes pastStates and futureStates */
+export const useTemporalStore = (useGraphStore as ReturnType<typeof temporal<GraphStore, GraphStore>>).temporal;

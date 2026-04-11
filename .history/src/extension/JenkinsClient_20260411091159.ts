@@ -171,18 +171,13 @@ export class JenkinsClient {
 
   private async rawRequest(urlPath: string, init: RequestInit = {}): Promise<Response> {
     const url = `${this.baseUrl}${urlPath}`;
-    const resp = await fetch(url, {
+    return fetch(url, {
       ...init,
       headers: {
         Authorization: `Basic ${this.auth}`,
         ...init.headers,
       },
     });
-    // Invalidate crumb cache if Jenkins returns 403 (crumb may have expired)
-    if (resp.status === 403) {
-      this.crumbCache = null;
-    }
-    return resp;
   }
 
   private mapStepDefinition(raw: Record<string, unknown>): StepDefinition {

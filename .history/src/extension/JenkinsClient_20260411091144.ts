@@ -47,14 +47,11 @@ export class JenkinsClient {
     return { [crumb.field]: crumb.value };
   }
 
-  // ─── Validation ──────────────────────────────────────────────────
-
   async validatePipeline(content: string): Promise<ValidationError[]> {
     const body = `jenkinsfile=${encodeURIComponent(content)}`;
-    const crumb = await this.crumbHeaders();
     const resp = await this.rawRequest('/pipeline-model-converter/validatejenkinfile', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...crumb },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body,
     });
     const text = await resp.text();
@@ -88,10 +85,9 @@ export class JenkinsClient {
       ? `/job/${encodedName}/buildWithParameters`
       : `/job/${encodedName}/build`;
     const body = hasParams ? new URLSearchParams(params!).toString() : undefined;
-    const crumb = await this.crumbHeaders();
     const resp = await this.rawRequest(urlPath, {
       method: 'POST',
-      headers: { ...(body ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}), ...crumb },
+      headers: body ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {},
       body,
     });
     if (resp.status !== 201 && resp.status !== 302 && !resp.ok) {
@@ -140,11 +136,7 @@ export class JenkinsClient {
 
   async abortBuild(jobName: string, buildNumber: number): Promise<void> {
     const encodedName = jobName.split('/').map(encodeURIComponent).join('/job/');
-    const crumb = await this.crumbHeaders();
-    const resp = await this.rawRequest(`/job/${encodedName}/${buildNumber}/stop`, {
-      method: 'POST',
-      headers: crumb,
-    });
+    const resp = await this.rawRequest(`/job/${encodedName}/${buildNumber}/stop`, { method: 'POST' });
     if (!resp.ok && resp.status !== 302) {
       throw new Error(`Abort failed: ${resp.status} ${resp.statusText}`);
     }
@@ -171,18 +163,13 @@ export class JenkinsClient {
 
   private async rawRequest(urlPath: string, init: RequestInit = {}): Promise<Response> {
     const url = `${this.baseUrl}${urlPath}`;
-    const resp = await fetch(url, {
+    return fetch(url, {
       ...init,
       headers: {
         Authorization: `Basic ${this.auth}`,
         ...init.headers,
       },
     });
-    // Invalidate crumb cache if Jenkins returns 403 (crumb may have expired)
-    if (resp.status === 403) {
-      this.crumbCache = null;
-    }
-    return resp;
   }
 
   private mapStepDefinition(raw: Record<string, unknown>): StepDefinition {

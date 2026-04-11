@@ -111,8 +111,7 @@
         "jenkinsNodeEditor.jenkinsToken": {
           "type": "string",
           "default": "",
-          "markdownDescription": "**Deprecated** — use the `Jenkins: Set Jenkins API Token (Secure)` command instead. The token will be stored in VS Code SecretStorage, not in this settings file.",
-          "deprecationMessage": "Store the token securely: run 'Jenkins: Set Jenkins API Token (Secure)' from the command palette."
+          "description": "Jenkins API token (generate at /me/configure in Jenkins)"
         },
         "jenkinsNodeEditor.autoLayout": {
           "type": "boolean",
@@ -170,7 +169,6 @@
     "immer": "^11.1.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "zundo": "^2.3.0",
     "zustand": "^4.5.0"
   }
 }

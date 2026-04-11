@@ -18,9 +18,6 @@ export default function Toolbar() {
   const toggleLogs = useGraphStore(s => s.toggleLogs);
   const autoLayout = useGraphStore(s => s.autoLayout);
   const showLogs = useGraphStore(s => s.showLogs);
-  const undo = useGraphStore(s => s.undo);
-  const redo = useGraphStore(s => s.redo);
-  const { pastStates, futureStates } = useTemporalStore();
 
   const errorCount = validationErrors.filter(e => e.severity === 'error').length;
   const warnCount = validationErrors.filter(e => e.severity === 'warning').length;
@@ -58,26 +55,6 @@ export default function Toolbar() {
       </button>
       <button className="bo-toolbar-btn" onClick={() => fitView({ padding: 0.2, duration: 300 })} title="Fit all nodes in view (F)">
         ⊡ Fit
-      </button>
-
-      <div className="bo-divider" />
-
-      {/* Undo / Redo */}
-      <button
-        className="bo-toolbar-btn"
-        onClick={undo}
-        disabled={pastStates.length === 0}
-        title="Undo (Ctrl+Z)"
-      >
-        ↩ Undo
-      </button>
-      <button
-        className="bo-toolbar-btn"
-        onClick={redo}
-        disabled={futureStates.length === 0}
-        title="Redo (Ctrl+Shift+Z)"
-      >
-        ↪ Redo
       </button>
 
       <div className="bo-divider" />

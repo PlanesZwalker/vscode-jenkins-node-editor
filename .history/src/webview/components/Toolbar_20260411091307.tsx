@@ -62,26 +62,6 @@ export default function Toolbar() {
 
       <div className="bo-divider" />
 
-      {/* Undo / Redo */}
-      <button
-        className="bo-toolbar-btn"
-        onClick={undo}
-        disabled={pastStates.length === 0}
-        title="Undo (Ctrl+Z)"
-      >
-        ↩ Undo
-      </button>
-      <button
-        className="bo-toolbar-btn"
-        onClick={redo}
-        disabled={futureStates.length === 0}
-        title="Redo (Ctrl+Shift+Z)"
-      >
-        ↪ Redo
-      </button>
-
-      <div className="bo-divider" />
-
       {/* Validation */}
       {errorCount > 0 && (
         <span style={{ fontSize: 11, color: 'var(--bo-red)', display: 'flex', alignItems: 'center', gap: 3 }}>

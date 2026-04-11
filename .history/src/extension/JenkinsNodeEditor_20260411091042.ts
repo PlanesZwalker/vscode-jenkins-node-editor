@@ -114,7 +114,7 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
     // 2. Setup bus + store
     const bus = new MessageBus(webviewPanel);
     const posStore = new PositionStore(document.uri);
-    const config = await this.getConfig();
+    const config = this.getConfig();
     this.activePanels.set(document.uri.toString(), { bus, panel: webviewPanel });
 
     // 3. Handle READY — send initial graph
@@ -131,7 +131,7 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
 
     // 4. Handle GRAPH_CHANGED — write back to document
     const graphChangedDisposable = bus.on('GRAPH_CHANGED', async (msg) => {
-      if (this.syncDepth > 0) return;
+      if (this.isSyncing) return;
       const positions = extractPositions(msg.graph);
       await posStore.save(positions);
       await this.applyGraphToDocument(msg.graph, document);
@@ -185,7 +185,7 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
     // 8. Listen to document changes
     const docChangeDisposable = vscode.workspace.onDidChangeTextDocument(async (e) => {
       if (e.document.uri.toString() !== document.uri.toString()) return;
-      if (this.syncDepth > 0) return;
+      if (this.isSyncing) return;
       try {
         const { graph } = await this.parser.parse(e.document.getText());
         const saved = await posStore.load();
@@ -283,22 +283,24 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
       document.positionAt(document.getText().length),
     );
     edit.replace(document.uri, fullRange, text);
-    this.syncDepth++;
+    this.isSyncing = true;
     try {
       await vscode.workspace.applyEdit(edit);
     } finally {
-      this.syncDepth--;
+      // Reset flag after a short delay so the onDidChangeTextDocument handler that
+      // fires as a result of applyEdit is also suppressed
+      setTimeout(() => { this.isSyncing = false; }, 100);
     }
   }
 
   // ─── Config extension ──────────────────────────────────────────────────
 
-  private async getConfig(): Promise<ExtensionConfig> {
+  private getConfig(): ExtensionConfig {
     const config = vscode.workspace.getConfiguration('jenkinsNodeEditor');
     return {
       jenkinsUrl: config.get<string>('jenkinsUrl', ''),
       jenkinsUser: config.get<string>('jenkinsUser', ''),
-      jenkinsToken: await this.resolveToken(),
+      jenkinsToken: config.get<string>('jenkinsToken', ''),
       autoLayout: config.get<boolean>('autoLayout', true),
       syncDelay: config.get<number>('syncDelay', 300),
     };
