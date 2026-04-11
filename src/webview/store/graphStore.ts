@@ -2,7 +2,7 @@
 // Store Zustand central — tout l'état mutable de l'application
 // Voir docs/PHASE2.md §2.3
 
-import { create } from 'zustand';
+import { create, useStore } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { temporal } from 'zundo';
 import {
@@ -216,12 +216,13 @@ export const useGraphStore = create<GraphStore>()(
  * Temporal (undo/redo) store — only tracks nodes + edges mutations.
  * Use useTemporalStore().undo() / .redo() or wire via the store actions below.
  */
-export const useTemporalStore = useGraphStore.temporal;
+// useGraphStore.temporal is a StoreApi (not a hook); wrap it so components can call useTemporalStore()
+export const useTemporalStore = () => useStore(useGraphStore.temporal);
 
 // Patch undo/redo into the main store so consumers can call useGraphStore(s => s.undo)
 useGraphStore.setState({
-  undo: () => useTemporalStore.getState().undo(),
-  redo: () => useTemporalStore.getState().redo(),
-  get canUndo() { return useTemporalStore.getState().pastStates.length > 0; },
-  get canRedo() { return useTemporalStore.getState().futureStates.length > 0; },
+  undo: () => useGraphStore.temporal.getState().undo(),
+  redo: () => useGraphStore.temporal.getState().redo(),
+  get canUndo() { return useGraphStore.temporal.getState().pastStates.length > 0; },
+  get canRedo() { return useGraphStore.temporal.getState().futureStates.length > 0; },
 });
