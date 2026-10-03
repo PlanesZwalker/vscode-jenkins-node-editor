@@ -74,7 +74,16 @@ function countBraceDepth(source: string): number {
 }
 
 export function detectMode(source: string): 'declarative' | 'scripted' {
-  return /^\s*pipeline\s*\{/.test(source) ? 'declarative' : 'scripted';
+  // A declarative pipeline may be preceded by comments, `@Library` annotations,
+  // and top-level Groovy constants (`IMAGE_MAP = [...]`, `SCALE_SVCS = [...]`).
+  // The old start-anchored regex (`/^\s*pipeline\s*\{/`) missed every one of
+  // those, mis-classifying such files as 'scripted' → empty graph, no stages.
+  // Tokenize (comment/string aware) and look for a top-level `pipeline {` block.
+  try {
+    if (tokenizeBlocks(source).some(b => b.keyword === 'pipeline')) return 'declarative';
+  } catch { /* fall through to regex */ }
+  // Fallback: a `pipeline {` at the start of any line (not just the first).
+  return /(?:^|\n)\s*pipeline\s*\{/.test(source) ? 'declarative' : 'scripted';
 }
 
 export function tokenizeBlocks(source: string): Block[] {
@@ -138,7 +147,11 @@ function extractLastKeyword(segment: string): { keyword: string; args: string } 
     const t = lines[l].trim();
     if (t && !t.startsWith('//') && !t.startsWith('*')) { lastLine = t; break; }
   }
-  const withArgs = lastLine.match(/(\w[\w.]*)\s*\(([^)]*)\)\s*$/);
+  // Greedy args match so names containing parentheses survive, e.g.
+  //   stage('Free RAM (staging)')  →  keyword='stage', args="'Free RAM (staging)'"
+  // The old non-greedy `[^)]*` stopped at the first ')' and fell through,
+  // leaving the whole expression as the keyword → stage skipped by callers.
+  const withArgs = lastLine.match(/^([\w][\w.]*)\s*\(([\s\S]*)\)\s*$/);
   if (withArgs) return { keyword: withArgs[1], args: withArgs[2].trim() };
   const wordAtEnd = lastLine.match(/(\w[\w.]*)\s*$/);
   if (wordAtEnd) return { keyword: wordAtEnd[1], args: '' };
@@ -231,6 +244,10 @@ function buildStageNodes(
   const stepsBlock = block.children.find(c => c.keyword === 'steps');
   const parallelBlock = block.children.find(c => c.keyword === 'parallel')
     ?? stepsBlock?.children.find(c => c.keyword === 'parallel');
+  // Nested `stages { }` (sequential stages, or the parent of a parallel matrix).
+  // Jenkins allows stage('X') { stages { stage(...) { ... } } }; without this,
+  // every nested stage is silently dropped and the graph shows only top-level stages.
+  const nestedStagesBlock = block.children.find(c => c.keyword === 'stages');
 
   if (parallelBlock) {
     const branchNames: string[] = [];
@@ -243,6 +260,14 @@ function buildStageNodes(
     }
     const pn = makeNode('parallel', 'parallel', { branches: branchNames, kind: 'parallel' });
     nodes.push(pn); edges.push(makeEdge(stageNode.id, pn.id, 'contains'));
+  } else if (nestedStagesBlock) {
+    // Recurse into nested stages; the first child continues the sequence from this stage.
+    let prevId = stageNode.id;
+    for (const sb of nestedStagesBlock.children) {
+      if (sb.keyword !== 'stage') continue;
+      const r = buildStageNodes(sb, prevId, errors);
+      nodes.push(...r.nodes); edges.push(...r.edges); prevId = r.lastId;
+    }
   } else if (stepsBlock) {
     for (const sl of getSimpleLines(stepsBlock.body)) {
       const sd = parseStep(sl); if (!sd) continue;
