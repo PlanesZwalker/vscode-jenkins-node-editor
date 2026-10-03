@@ -89,6 +89,22 @@ export function useVSCodeBridge(): void {
           store.setBuildStatus(msg.status);
           break;
 
+        case 'CONFIG':
+          store.setJenkinsConfig(msg.config);
+          if (!msg.config.jenkinsUrl || !msg.config.jenkinsUser || !msg.config.jenkinsJobName || !msg.config.hasToken) {
+            // still missing something — keep the panel's guidance accurate
+          } else {
+            store.setConfigMissing([]);
+            store.setBuildError(null);
+          }
+          break;
+
+        case 'CONFIG_REQUIRED':
+          // A build failed for lack of settings — surface them and open the panel.
+          store.setConfigMissing(msg.missing);
+          store.setBuildError('Jenkins is not configured — fill in the settings below and try again.');
+          break;
+
         case 'THEME_CHANGED':
           applyThemeVars();
           break;

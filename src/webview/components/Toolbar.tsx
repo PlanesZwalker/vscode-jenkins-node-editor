@@ -1,15 +1,21 @@
 // src/webview/components/Toolbar.tsx
 // Blue Ocean inspired toolbar
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { useGraphStore, useTemporalStore } from '../store/graphStore';
 import { useJenkinsAPI } from '../hooks/useJenkinsAPI';
+import ConfigPanel from './ConfigPanel';
 
 export default function Toolbar() {
   const { fitView } = useReactFlow();
   const { validate, runBuild, abortBuild } = useJenkinsAPI();
   const [showHelp, setShowHelp] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
+
+  // Auto-open the configuration panel when a build fails for lack of settings.
+  const configMissing = useGraphStore(s => s.configMissing);
+  useEffect(() => { if (configMissing.length > 0) setShowConfig(true); }, [configMissing]);
 
   const buildStatus = useGraphStore(s => s.buildStatus);
   const isValidating = useGraphStore(s => s.isValidating);
@@ -141,6 +147,19 @@ export default function Toolbar() {
         ☰ Logs
       </button>
 
+      {/* Settings */}
+      <button
+        className="bo-toolbar-btn"
+        onClick={() => setShowConfig(v => !v)}
+        title="Jenkins connection settings"
+        style={{
+          borderColor: configMissing.length > 0 ? 'var(--bo-red)' : showConfig ? 'var(--bo-blue-dark)' : undefined,
+          color: configMissing.length > 0 ? 'var(--bo-red)' : showConfig ? 'var(--bo-blue-bright)' : undefined,
+        }}
+      >
+        ⚙ Settings{configMissing.length > 0 ? ' !' : ''}
+      </button>
+
       {/* Help */}
       <button
         className="bo-toolbar-btn"
@@ -150,6 +169,9 @@ export default function Toolbar() {
       >
         ? Help
       </button>
+
+      {/* Configuration panel (auto-opened on config-related build failure) */}
+      {showConfig && <ConfigPanel onClose={() => setShowConfig(false)} />}
 
       {/* Help tooltip panel */}
       {showHelp && (

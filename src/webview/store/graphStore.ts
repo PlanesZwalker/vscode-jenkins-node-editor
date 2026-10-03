@@ -11,7 +11,7 @@ import {
   addEdge,
 } from '@xyflow/react';
 import type { Node, Edge, OnNodesChange, OnEdgesChange, Connection } from '@xyflow/react';
-import type { GraphModel, ValidationError, BuildStatus } from '../../shared/types';
+import type { GraphModel, ValidationError, BuildStatus, ConfigKey, PublicConfig } from '../../shared/types';
 import { applyDagreLayout } from '../utils/layout';
 
 // ─── Types du store ─────────────────────────────────────────────────────────
@@ -28,6 +28,12 @@ type GraphStore = {
   validationErrors: ValidationError[];
   buildStatus: BuildStatus;
   buildNumber: number | null;
+  /** Réglages manquants ayant fait échouer le dernier build (ouvre le panneau de config). */
+  configMissing: ConfigKey[];
+  /** Dernier message d'erreur de build (affiché dans le panneau de config). */
+  buildError: string | null;
+  /** Config Jenkins courante (token = présence seulement). */
+  jenkinsConfig: PublicConfig | null;
   stepCatalog: Array<{ name: string; displayName: string; description: string }>;
 
   // ── Actions React Flow ───────────────────────────────────────────────
@@ -53,6 +59,9 @@ type GraphStore = {
   // ── Actions build ────────────────────────────────────────────────────
   setBuildStatus: (status: BuildStatus) => void;
   setBuildNumber: (n: number | null) => void;
+  setConfigMissing: (keys: ConfigKey[]) => void;
+  setBuildError: (msg: string | null) => void;
+  setJenkinsConfig: (config: PublicConfig) => void;
 
   // ── Actions logs ─────────────────────────────────────────────────────
   appendLog: (line: string) => void;
@@ -85,6 +94,9 @@ export const useGraphStore = create<GraphStore>()(
     validationErrors: [],
     buildStatus: 'idle',
     buildNumber: null,
+    configMissing: [],
+    buildError: null,
+    jenkinsConfig: null,
     stepCatalog: [],
 
     // ── React Flow handlers ───────────────────────────────────────────
@@ -184,6 +196,9 @@ export const useGraphStore = create<GraphStore>()(
     // ── Build ─────────────────────────────────────────────────────────
     setBuildStatus: (status) => set(state => { state.buildStatus = status; }),
     setBuildNumber: (n) => set(state => { state.buildNumber = n; }),
+    setConfigMissing: (keys) => set(state => { state.configMissing = keys; }),
+    setBuildError: (msg) => set(state => { state.buildError = msg; }),
+    setJenkinsConfig: (config) => set(state => { state.jenkinsConfig = config; }),
 
     // ── Logs ──────────────────────────────────────────────────────────
     appendLog: (line) => set(state => {
