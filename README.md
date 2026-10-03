@@ -10,7 +10,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Tests](https://img.shields.io/badge/tests-64%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-69%20passed-brightgreen)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
 
 </div>
@@ -440,7 +440,7 @@ npm run build
 # Launch Extension Development Host:
 # press F5 in VS Code, or install the .vsix:
 npm run package
-code --install-extension vscode-jenkins-node-editor-0.1.0.vsix
+code --install-extension vscode-jenkins-node-editor-0.7.0.vsix
 ```
 
 ---
@@ -455,8 +455,8 @@ Open VS Code Settings (`Ctrl+,`) and search for **Jenkins Node Editor**:
 | `jenkinsNodeEditor.jenkinsUser` | string | `""` | Jenkins username for API auth |
 | `jenkinsNodeEditor.jenkinsJobName` | string | `""` | Jenkins job path for **Run Build**, e.g. `my-folder/my-job`. Required to trigger a build. |
 | `jenkinsNodeEditor.jenkinsBranch` | string | `""` | Optional branch for multibranch jobs (e.g. `dev`). Appended to the job path (`glsl` + `dev` → `glsl/job/dev`). Leave empty if the job path already contains the branch. |
-| `jenkinsNodeEditor.autoLayout` | boolean | `true` | Auto-layout graph when opening a file |
-| `jenkinsNodeEditor.syncDelay` | number | `300` | Debounce delay (ms) before syncing graph ÔåÆ text |
+| `jenkinsNodeEditor.autoLayout` | boolean | `true` | Auto-layout the graph when opening a file. When `false`, only nodes **without** a saved position are laid out — your manual placements are always kept. |
+| `jenkinsNodeEditor.syncDelay` | number | `300` | Debounce delay (ms) before syncing graph → text. |
 
 > ÔÜá´©Å `jenkinsNodeEditor.jenkinsToken` has been **deprecated**. Use the secure command below instead.
 
@@ -600,6 +600,7 @@ npm run test:unit
 ✓ test/suite/scripted-when-mapping.test.ts (11 tests)
 ✓ test/suite/build-params.test.ts (6 tests)
 ✓ test/suite/connection-test.test.ts (5 tests)
+✓ test/suite/layout-options.test.ts (5 tests)
 
   JenkinsfileParser — simple.Jenkinsfile
     ✓ parses without fatal errors
@@ -647,6 +648,24 @@ Test Files  2 passed (2)
      Tests  28 passed (28)
   Duration  ~550ms
 ```
+
+### E2E Tests (real VS Code)
+
+```bash
+npm run test:e2e   # downloads VS Code, launches it, runs test/suite/**/*.e2e.js
+```
+
+```
+✓ extension is present
+✓ extension activates
+✓ registers the custom editor and commands
+✓ contributes the Jenkinsfile custom editor
+```
+
+The harness is `test/suite/index.js` (mocha, `tdd` UI) driven by
+`test/runTests.js` (`@vscode/test-electron`). Unit tests are `*.test.ts` (Vitest,
+plain Node); E2E tests are `*.e2e.js` (need a real VS Code host) — the two globs
+never overlap.
 
 ### Test Fixtures
 
@@ -699,7 +718,7 @@ Apache 2.0 ┬® 2026 [PlanesZwalker](https://github.com/PlanesZwalker) ÔÇö s
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Tests](https://img.shields.io/badge/tests-64%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-69%20passed-brightgreen)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
 
 </div>
