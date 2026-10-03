@@ -50,7 +50,10 @@ export type ExtensionMessage =
   | { type: 'CONFIG_REQUIRED'; missing: ConfigKey[] }
 
   /** Paramètres de build du Jenkinsfile courant (formulaire Run Build) */
-  | { type: 'PARAMS'; params: JobParam[] };
+  | { type: 'PARAMS'; params: JobParam[] }
+
+  /** Résultat d'un test de connexion Jenkins (étapes ok/échec) */
+  | { type: 'CONNECTION_RESULT'; steps: Array<{ ok: boolean; label: string; detail: string }> };
 
 // ─── Webview → Extension ────────────────────────────────────────────────────
 
@@ -73,4 +76,7 @@ export type WebviewMessage =
   | { type: 'ERROR'; message: string; stack?: string }
 
   /** L'utilisateur a enregistré un réglage depuis le panneau de configuration */
-  | { type: 'SET_CONFIG'; key: ConfigKey; value: string };
+  | { type: 'SET_CONFIG'; key: ConfigKey; value: string }
+
+  /** Tester la connexion Jenkins (les drafts non enregistrés sont transmis) */
+  | { type: 'TEST_CONNECTION'; url?: string; user?: string; jobName?: string; branch?: string; token?: string };

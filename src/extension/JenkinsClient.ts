@@ -88,6 +88,72 @@ export class JenkinsClient {
     return data.steps.map(s => this.mapStepDefinition(s as Record<string, unknown>));
   }
 
+  // ─── Connection test ──────────────────────────────────────────────────
+
+  /**
+   * Probes the Jenkins server and the target job. Returns a step-by-step report.
+   * Values passed in `overrides` (unsaved panel drafts) win over the config so the
+   * user can test before saving.
+   */
+  async testConnection(
+    jobName: string,
+    branch?: string,
+    overrides?: { user?: string; token?: string },
+  ): Promise<Array<{ ok: boolean; label: string; detail: string }>> {
+    const steps: Array<{ ok: boolean; label: string; detail: string }> = [];
+    const auth = overrides && (overrides.user !== undefined || overrides.token !== undefined)
+      ? Buffer.from(`${overrides.user ?? ''}:${overrides.token ?? ''}`).toString('base64')
+      : this.auth;
+    const authHeaders: Record<string, string> = { Authorization: `Basic ${auth}` };
+
+    // 1. Reachability (no auth first — /api/json accepts anonymous read on many setups).
+    let reachable = false;
+    try {
+      const r = await fetch(`${this.baseUrl}/api/json`, { headers: { Authorization: `Basic ${auth}` } });
+      if (r.ok) {
+        reachable = true;
+        steps.push({ ok: true, label: 'Server reachable', detail: `${this.baseUrl} (HTTP ${r.status})` });
+      } else {
+        steps.push({ ok: false, label: 'Server reachable', detail: `HTTP ${r.status} ${r.statusText} — check the URL` });
+      }
+    } catch (err) {
+      steps.push({ ok: false, label: 'Server reachable', detail: `${err instanceof Error ? err.message : String(err)} — check the URL / network` });
+    }
+    if (!reachable) return steps;
+
+    // 2. Authentication.
+    try {
+      const r = await fetch(`${this.baseUrl}/me/api/json`, { headers: authHeaders });
+      if (r.ok) {
+        const me = await r.json() as { fullName?: string; id?: string };
+        steps.push({ ok: true, label: 'Authenticated', detail: `${me.fullName || me.id || 'user'}` });
+      } else {
+        steps.push({ ok: false, label: 'Authenticated', detail: `HTTP ${r.status} ${r.statusText} — check user / API token` });
+      }
+    } catch (err) {
+      steps.push({ ok: false, label: 'Authenticated', detail: err instanceof Error ? err.message : String(err) });
+    }
+
+    // 3. Job exists.
+    if (!jobName) {
+      steps.push({ ok: false, label: 'Job found', detail: 'No job path configured' });
+      return steps;
+    }
+    const jobPath = buildJobPath(jobName, branch);
+    try {
+      const r = await fetch(`${this.baseUrl}/job/${jobPath}/api/json?tree=name,color,url`, { headers: authHeaders });
+      if (r.ok) {
+        const j = await r.json() as { name?: string; url?: string };
+        steps.push({ ok: true, label: 'Job found', detail: `${j.name ?? jobName}${branch ? ` [${branch}]` : ''}` });
+      } else {
+        steps.push({ ok: false, label: 'Job found', detail: `HTTP ${r.status} — check the job path${branch ? ' / branch' : ''}` });
+      }
+    } catch (err) {
+      steps.push({ ok: false, label: 'Job found', detail: err instanceof Error ? err.message : String(err) });
+    }
+    return steps;
+  }
+
   // ─── Build ────────────────────────────────────────────────────────────
 
   async triggerBuild(jobName: string, params?: Record<string, string>, branch?: string): Promise<string> {

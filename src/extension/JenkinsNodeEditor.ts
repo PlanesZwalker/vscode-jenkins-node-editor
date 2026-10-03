@@ -184,11 +184,13 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
     // 6. Handle RUN_BUILD — MUST always end with a terminal BUILD_STATUS, otherwise
     // the webview stays stuck on "running" (it sets that optimistically on click).
     const runDisposable = bus.on('RUN_BUILD', async (msg) => {
-      const jobName = msg.jobName || config.jenkinsJobName;
+      // Re-read config live: the user may have just saved settings in the panel.
+      const live = await this.getConfig();
+      const jobName = msg.jobName || live.jenkinsJobName;
       // Branch: explicit request wins, else the configured default (multibranch).
-      const branch = msg.branch || config.jenkinsBranch || undefined;
+      const branch = msg.branch || live.jenkinsBranch || undefined;
       // Missing settings → ask the webview to open the configuration panel.
-      const missing = this.missingBuildKeys(config);
+      const missing = this.missingBuildKeys(live);
       if (missing.length > 0) {
         bus.send({ type: 'LOG_LINE', line: `Jenkins not configured — missing: ${missing.join(', ')}`, stream: 'stderr' });
         bus.send({ type: 'CONFIG_REQUIRED', missing });
@@ -196,7 +198,7 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
         return;
       }
       try {
-        const client = new JenkinsClient(config);
+        const client = new JenkinsClient(live);
         const queueUrl = await client.triggerBuild(jobName, msg.params, branch);
         bus.send({ type: 'BUILD_STATUS', status: 'running' });
         const buildNumber = await client.getBuildNumber(queueUrl);
@@ -212,15 +214,17 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
 
     // 7. Handle ABORT_BUILD — always send a terminal status.
     const abortDisposable = bus.on('ABORT_BUILD', async (msg) => {
-      const jobName = msg.jobName || config.jenkinsJobName;
-      if (!config.jenkinsUrl || !jobName || msg.buildNumber === undefined) {
+      const live = await this.getConfig();
+      const jobName = msg.jobName || live.jenkinsJobName;
+      const branch = live.jenkinsBranch || undefined;
+      if (!live.jenkinsUrl || !jobName || msg.buildNumber === undefined) {
         bus.send({ type: 'LOG_LINE', line: 'Nothing to abort (no Jenkins URL, job, or build number).', stream: 'stderr' });
         bus.send({ type: 'BUILD_STATUS', status: 'aborted' });
         return;
       }
       try {
-        const client = new JenkinsClient(config);
-        await client.abortBuild(jobName, msg.buildNumber);
+        const client = new JenkinsClient(live);
+        await client.abortBuild(jobName, msg.buildNumber, branch);
         bus.send({ type: 'BUILD_STATUS', status: 'aborted' });
       } catch (err) {
         logger.error('Abort error', err);
@@ -244,7 +248,29 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
       }
     });
 
-    // 9. Listen to document changes
+    // 9. Handle TEST_CONNECTION — probe server / auth / job without triggering a build.
+    const testConnDisposable = bus.on('TEST_CONNECTION', async (msg) => {
+      const live = await this.getConfig();
+      // Unsaved panel drafts win; otherwise fall back to the stored config.
+      const url = (msg.url || live.jenkinsUrl).replace(/\/$/, '');
+      const user = msg.user ?? live.jenkinsUser;
+      const token = msg.token ?? live.jenkinsToken;
+      const jobName = msg.jobName ?? live.jenkinsJobName;
+      const branch = (msg.branch ?? live.jenkinsBranch) || undefined;
+      if (!url) {
+        bus.send({ type: 'CONNECTION_RESULT', steps: [{ ok: false, label: 'Server reachable', detail: 'No Jenkins URL provided' }] });
+        return;
+      }
+      try {
+        const client = new JenkinsClient({ ...live, jenkinsUrl: url, jenkinsUser: user, jenkinsToken: token });
+        const steps = await client.testConnection(jobName, branch, { user, token });
+        bus.send({ type: 'CONNECTION_RESULT', steps });
+      } catch (err) {
+        bus.send({ type: 'CONNECTION_RESULT', steps: [{ ok: false, label: 'Connection test', detail: err instanceof Error ? err.message : String(err) }] });
+      }
+    });
+
+    // 10. Listen to document changes
     const docChangeDisposable = vscode.workspace.onDidChangeTextDocument(async (e) => {
       if (e.document.uri.toString() !== document.uri.toString()) return;
       if (this.syncDepth > 0) return;
@@ -276,6 +302,7 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
       runDisposable.dispose();
       abortDisposable.dispose();
       setConfigDisposable.dispose();
+      testConnDisposable.dispose();
       docChangeDisposable.dispose();
       themeDisposable.dispose();
     });
