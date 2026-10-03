@@ -73,7 +73,7 @@ type GraphStore = {
 
 export const useGraphStore = create<GraphStore>()(
   temporal(
-    immer((set, get) => ({
+    immer((set, _get) => ({
     // ── State initial ────────────────────────────────────────────────
     nodes: [],
     edges: [],

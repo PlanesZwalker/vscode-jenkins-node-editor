@@ -2,7 +2,7 @@
 // GraphModel → Jenkinsfile texte
 // Voir docs/PHASE3.md §3.5 pour l'implémentation complète
 
-import type { GraphModel, JenkinsNode, JenkinsEdge, StepData, AgentData, PostData } from '../shared/types';
+import type { GraphModel, JenkinsNode, JenkinsEdge, StepData, AgentData } from '../shared/types';
 
 export class JenkinsfileGenerator {
   private indent = 0;

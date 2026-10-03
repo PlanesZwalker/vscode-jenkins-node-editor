@@ -1,6 +1,6 @@
 // src/webview/nodes/ParallelNode.tsx
 import React from 'react';
-import { NodeProps, Handle, Position } from '@xyflow/react';
+import { NodeProps } from '@xyflow/react';
 import { BaseNode } from './BaseNode';
 
 export default function ParallelNode(props: NodeProps) {
