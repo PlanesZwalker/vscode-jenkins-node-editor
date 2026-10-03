@@ -10,7 +10,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Tests](https://img.shields.io/badge/tests-28%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-42%20passed-brightgreen)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
 
 </div>
@@ -72,9 +72,11 @@ The UI is styled after **Blue Ocean**, Jenkins' own modern pipeline visualizatio
 
 | Feature | Description |
 |---------|-------------|
-| **Visual Graph Editor** | Drag, drop, and connect pipeline nodes on a Blue OceanÔÇôstyled canvas |
-| **Bidirectional Sync** | Edit text ÔåÆ graph updates; edit graph ÔåÆ text updates |
-| **Drag-safe Sync** | Sync is deliberately skipped while a node is being dragged ÔÇö no mid-drag remounts |
+| **Visual Graph Editor** | Drag, drop, and connect pipeline nodes on a Blue Ocean–styled canvas |
+| **Bidirectional Sync** | Edit text → graph updates; edit graph → text updates |
+| **Surgical Sync** | Graph→file writes are minimal-diff: only the changed region is rewritten; everything else is preserved byte-for-byte |
+| **Destructive-edit Guard** | If a write would delete >50% of a large file (a lossy regeneration), it is refused with a warning instead of corrupting the file |
+| **Drag-safe Sync** | Sync is deliberately skipped while a node is being dragged — no mid-drag remounts |
 | **Undo / Redo** | Full undo/redo history for node and edge changes via `zundo` (Ôå® / Ôå¬ in toolbar) |
 | **Auto-layout** | Dagre-powered automatic node positioning on open |
 | **Declarative Parser** | Full support for `pipeline {}`, `stages`, `agent`, `when`, `environment`, `parameters`, `triggers`, `post` |
@@ -88,7 +90,16 @@ The UI is styled after **Blue Ocean**, Jenkins' own modern pipeline visualizatio
 | **Log Streaming** | Real-time build log streaming via Jenkins' progressive text API |
 | **Theme Support** | Follows VS Code light / dark / high-contrast themes |
 | **Position Memory** | Node positions persisted in `.vscode/` between sessions |
-| **Error Boundary** | React ErrorBoundary wraps the root ÔÇö crashes show a readable error panel, not a blank screen |
+| **Error Boundary** | React ErrorBoundary wraps the root — crashes show a readable error panel, not a blank screen |
+
+> **Fidelity caveat.** The graph models the common declarative shapes (stages,
+> agent, steps, when, environment, parameters, triggers, post). Constructs it does
+> not model — arbitrary `script { }` bodies, multi-line `sh '''…'''`, inline
+> comments, some `checkout([...])` forms — are **preserved in the file** (surgical
+> sync never touches them) but do not appear as nodes. When you edit a graph node,
+> only that node's region is rewritten; the rest of the file, including unmodelled
+> constructs, is left untouched. If a change would require rewriting most of the
+> file, the write is refused rather than risking data loss.
 
 ---
 
@@ -556,6 +567,9 @@ npm run publish       # Publish to Marketplace (requires vsce login)
 - **`buildStageNodes()` must recurse into nested `stages { }`** — Jenkins allows `stage('X') { stages { stage(...) } }` (sequential stages / matrix parents). Without recursion, only top-level stages were emitted (a 21-stage Jenkinsfile showed just 2).
 - **`extractLastKeyword()` must match args greedily** — stage names containing parentheses (`stage('Free RAM (staging)')`) broke the old non-greedy `[^)]*` matcher, leaving the whole expression as the keyword and silently dropping the stage.
 - **dagre must receive `contains` edges** — skipping parent→child (`contains`) edges in the auto-layout left every step/agent/post unconnected, so dagre dumped them all into rank 0 (y≈0) and the graph rendered as a cramped row at the top.
+- **Never regenerate the whole file** — the graph is lossy, so a full regeneration destroys unmodelled constructs. `applyGraphToDocument` computes a minimal-diff edit (`surgicalEdit.ts`) and refuses edits that would delete >50% of a large file.
+- **The generator must be faithful** — it emits no blank lines, keeps `post` in source order, and never invents optional args (`fingerprint`). Any cosmetic divergence turns a no-op into a full-file diff.
+- **Match the document's EOL before diffing** — the generator emits LF; a CRLF Jenkinsfile diffed against LF reads as "every line changed". `normalizeEol()` runs before `computeMinimalEdit`.
 ---
 
 ## Testing
@@ -566,10 +580,12 @@ npm run publish       # Publish to Marketplace (requires vsce login)
 npm run test:unit
 ```
 
-28 tests covering the parser and generator:
+42 tests covering the parser, generator, and sync engine:
 
 ```
 ✓ test/suite/parser.test.ts (19 tests)
+✓ test/suite/real-world.test.ts (9 tests)
+✓ test/suite/surgical-edit.test.ts (14 tests)
 
   JenkinsfileParser — simple.Jenkinsfile
     ✓ parses without fatal errors
@@ -669,7 +685,7 @@ Apache 2.0 ┬® 2026 [PlanesZwalker](https://github.com/PlanesZwalker) ÔÇö s
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Tests](https://img.shields.io/badge/tests-28%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-42%20passed-brightgreen)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
 
 </div>
