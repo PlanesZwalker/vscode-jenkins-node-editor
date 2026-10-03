@@ -461,15 +461,48 @@ function parseOptions(body: string, children: Block[] = []): Record<string, unkn
 
 function parseParameters(body: string): Array<Record<string, unknown>> {
   const p: Array<Record<string, unknown>> = [];
-  for (const raw of body.split('\n')) {
-    const t = raw.trim(); if (!t) continue;
-    const nM = t.match(/name:\s*['"](\w+)['"]/); if (!nM) continue;
-    const dM = t.match(/defaultValue:\s*['"]([^'"]*)['"]/);
-    const descM = t.match(/description:\s*['"]([^'"]*)['"]/);
-    const tM = t.match(/^(string|booleanParam|choice|text|password)\s*\(/);
-    p.push({ type: tM?.[1] ?? 'string', name: nM[1], defaultValue: dM?.[1] ?? '', description: descM?.[1] ?? '' });
+  // Scan each `type( … )` call with balanced parentheses so multi-line params,
+  // unquoted booleans/numbers and nested brackets (choice choices: [...]) work.
+  const re = /(string|booleanParam|choice|text|password)\s*\(/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(body)) !== null) {
+    const inner = readBalanced(body, m.index + m[0].length);
+    if (!inner) break;
+    re.lastIndex = inner.end;
+    const innerText = inner.text;
+    const nM = innerText.match(/name:\s*['"]([^'"]+)['"]/);
+    if (!nM) continue;
+    const dQuoted = innerText.match(/defaultValue:\s*['"]([^'"]*)['"]/);
+    const dBare = innerText.match(/defaultValue:\s*([^,\n)]+)/);
+    const descM = innerText.match(/description:\s*['"]([^'"]*)['"]/);
+    const chM = innerText.match(/choices:\s*\[([\s\S]*?)\]/);
+    const choices = chM
+      ? chM[1].split(',').map(s => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean)
+      : undefined;
+    p.push({
+      type: m[1],
+      name: nM[1],
+      defaultValue: dQuoted ? dQuoted[1] : (dBare ? dBare[1].trim() : ''),
+      description: descM ? descM[1] : '',
+      ...(choices ? { choices } : {}),
+    });
   }
   return p;
+}
+
+/** Reads the inner text of a balanced `( … )` group starting after the open paren. */
+function readBalanced(source: string, start: number): { text: string; end: number } | null {
+  let depth = 1; let i = start;
+  while (i < source.length) {
+    const ch = source[i];
+    if (ch === "'" || ch === '"') {
+      const q = ch; i++;
+      while (i < source.length && source[i] !== q) { if (source[i] === '\\') i++; i++; }
+    } else if (ch === '(' || ch === '[') { depth++; }
+    else if (ch === ')' || ch === ']') { depth--; if (depth === 0) return { text: source.slice(start, i), end: i + 1 }; }
+    i++;
+  }
+  return null;
 }
 
 function parseTriggers(body: string): Array<Record<string, unknown>> {
