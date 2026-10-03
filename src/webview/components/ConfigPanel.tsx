@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGraphStore } from '../store/graphStore';
 import { postToExtension } from '../hooks/useVSCodeBridge';
-import type { ConfigKey } from '../../shared/types';
+import type { ConfigKey, JobParam } from '../../shared/types';
 
 type FieldSpec = {
   key: ConfigKey;
@@ -36,6 +36,12 @@ const FIELDS: FieldSpec[] = [
     hint: 'Full job path used by “Run Build”. Folders are separated by “/”.',
   },
   {
+    key: 'jenkinsBranch',
+    label: 'Branch (multibranch jobs)',
+    placeholder: 'dev',
+    hint: 'Optional. Appended to the job path for multibranch jobs (e.g. dev → …/job/dev).',
+  },
+  {
     key: 'jenkinsToken',
     label: 'API token',
     placeholder: 'paste your Jenkins API token',
@@ -60,6 +66,9 @@ export default function ConfigPanel({ onClose }: { onClose?: () => void }) {
   const configMissing = useGraphStore(s => s.configMissing);
   const jenkinsConfig = useGraphStore(s => s.jenkinsConfig);
   const buildError = useGraphStore(s => s.buildError);
+  const jobParams = useGraphStore(s => s.jobParams);
+  const buildParams = useGraphStore(s => s.buildParams);
+  const setBuildParam = useGraphStore(s => s.setBuildParam);
   const setConfigMissing = useGraphStore(s => s.setConfigMissing);
   const setBuildError = useGraphStore(s => s.setBuildError);
 
@@ -73,6 +82,7 @@ export default function ConfigPanel({ onClose }: { onClose?: () => void }) {
         jenkinsUrl: jenkinsConfig.jenkinsUrl,
         jenkinsUser: jenkinsConfig.jenkinsUser,
         jenkinsJobName: jenkinsConfig.jenkinsJobName,
+        jenkinsBranch: jenkinsConfig.jenkinsBranch,
         jenkinsToken: '', // never prefilled
       });
     }
@@ -170,13 +180,63 @@ export default function ConfigPanel({ onClose }: { onClose?: () => void }) {
         })}
       </div>
 
+      {/* Build parameters (from the Jenkinsfile's parameters {} block) */}
+      {jobParams.length > 0 && (
+        <div style={{ padding: '4px 14px 4px', borderTop: '1px solid var(--bo-navy-mid)' }}>
+          <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--bo-grey)', margin: '10px 0 8px' }}>
+            Build parameters
+          </div>
+          {jobParams.map(p => <ParamField key={p.name} param={p} value={buildParams[p.name] ?? p.defaultValue} onChange={v => setBuildParam(p.name, v)} />)}
+        </div>
+      )}
+
       <div style={{
         padding: '8px 14px 12px', borderTop: '1px solid var(--bo-navy-mid)',
         fontSize: 10, color: 'var(--bo-grey)', lineHeight: 1.6,
       }}>
         Settings are saved to your user settings (token → SecretStorage).
         All four are required to run a build.
+        {jobParams.length > 0 && ' Parameters above are applied on Run Build.'}
       </div>
+    </div>
+  );
+}
+
+// ── Build-parameter field (text / boolean / choice) ──────────────────────────
+
+function ParamField({ param, value, onChange }: { param: JobParam; value: string; onChange: (v: string) => void }) {
+  const isBool = param.type === 'booleanParam';
+  const label = (
+    <label style={{ display: 'block', marginBottom: 3, fontSize: 10, color: 'var(--bo-grey-light)' }} title={param.description}>
+      {param.name}
+      <span style={{ opacity: 0.45, marginLeft: 6 }}>{param.type}</span>
+    </label>
+  );
+
+  if (isBool) {
+    return (
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 11, color: 'var(--bo-grey-light)' }} title={param.description}>
+          <input type="checkbox" checked={value === 'true'} onChange={e => onChange(e.target.checked ? 'true' : 'false')} />
+          <span>{param.name} <span style={{ opacity: 0.45 }}>{param.type}</span></span>
+        </label>
+      </div>
+    );
+  }
+  if (param.choices && param.choices.length > 0) {
+    return (
+      <div style={{ marginBottom: 10 }}>
+        {label}
+        <select value={value} onChange={e => onChange(e.target.value)} style={inputStyle}>
+          {param.choices.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+    );
+  }
+  return (
+    <div style={{ marginBottom: 10 }}>
+      {label}
+      <input type="text" value={value} onChange={e => onChange(e.target.value)} style={inputStyle} />
     </div>
   );
 }

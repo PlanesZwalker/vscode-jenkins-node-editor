@@ -105,6 +105,10 @@ export function useVSCodeBridge(): void {
           store.setBuildError('Jenkins is not configured — fill in the settings below and try again.');
           break;
 
+        case 'PARAMS':
+          store.setJobParams(msg.params);
+          break;
+
         case 'THEME_CHANGED':
           applyThemeVars();
           break;

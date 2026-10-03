@@ -11,7 +11,7 @@ import {
   addEdge,
 } from '@xyflow/react';
 import type { Node, Edge, OnNodesChange, OnEdgesChange, Connection } from '@xyflow/react';
-import type { GraphModel, ValidationError, BuildStatus, ConfigKey, PublicConfig } from '../../shared/types';
+import type { GraphModel, ValidationError, BuildStatus, ConfigKey, PublicConfig, JobParam } from '../../shared/types';
 import { applyDagreLayout } from '../utils/layout';
 
 // ─── Types du store ─────────────────────────────────────────────────────────
@@ -34,6 +34,10 @@ type GraphStore = {
   buildError: string | null;
   /** Config Jenkins courante (token = présence seulement). */
   jenkinsConfig: PublicConfig | null;
+  /** Paramètres de build déclarés dans le Jenkinsfile. */
+  jobParams: JobParam[];
+  /** Valeurs saisies pour les paramètres de build (envoyées au Run Build). */
+  buildParams: Record<string, string>;
   stepCatalog: Array<{ name: string; displayName: string; description: string }>;
 
   // ── Actions React Flow ───────────────────────────────────────────────
@@ -62,6 +66,8 @@ type GraphStore = {
   setConfigMissing: (keys: ConfigKey[]) => void;
   setBuildError: (msg: string | null) => void;
   setJenkinsConfig: (config: PublicConfig) => void;
+  setJobParams: (params: JobParam[]) => void;
+  setBuildParam: (name: string, value: string) => void;
 
   // ── Actions logs ─────────────────────────────────────────────────────
   appendLog: (line: string) => void;
@@ -97,6 +103,8 @@ export const useGraphStore = create<GraphStore>()(
     configMissing: [],
     buildError: null,
     jenkinsConfig: null,
+    jobParams: [],
+    buildParams: {},
     stepCatalog: [],
 
     // ── React Flow handlers ───────────────────────────────────────────
@@ -199,6 +207,14 @@ export const useGraphStore = create<GraphStore>()(
     setConfigMissing: (keys) => set(state => { state.configMissing = keys; }),
     setBuildError: (msg) => set(state => { state.buildError = msg; }),
     setJenkinsConfig: (config) => set(state => { state.jenkinsConfig = config; }),
+    setJobParams: (params) => set(state => {
+      state.jobParams = params;
+      // Seed build values from declared defaults (keeps prior edits).
+      const next: Record<string, string> = {};
+      for (const p of params) next[p.name] = state.buildParams[p.name] ?? p.defaultValue;
+      state.buildParams = next;
+    }),
+    setBuildParam: (name, value) => set(state => { state.buildParams = { ...state.buildParams, [name]: value }; }),
 
     // ── Logs ──────────────────────────────────────────────────────────
     appendLog: (line) => set(state => {

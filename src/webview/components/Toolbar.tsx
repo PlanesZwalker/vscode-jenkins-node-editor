@@ -26,6 +26,7 @@ export default function Toolbar() {
   const showLogs = useGraphStore(s => s.showLogs);
   const undo = useGraphStore(s => s.undo);
   const redo = useGraphStore(s => s.redo);
+  const buildParams = useGraphStore(s => s.buildParams);
   const { pastStates, futureStates } = useTemporalStore();
 
   const errorCount = validationErrors.filter(e => e.severity === 'error').length;
@@ -130,7 +131,7 @@ export default function Toolbar() {
           ■ Abort
         </button>
       ) : (
-        <button className="bo-toolbar-btn bo-toolbar-btn-primary" onClick={() => runBuild()} title="Trigger Jenkins build (Ctrl+Shift+B)">
+        <button className="bo-toolbar-btn bo-toolbar-btn-primary" onClick={() => runBuild(undefined, buildParams)} title="Trigger Jenkins build (Ctrl+Shift+B)">
           ▶ Run Build
         </button>
       )}
