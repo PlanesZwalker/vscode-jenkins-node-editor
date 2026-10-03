@@ -170,36 +170,51 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
       }
     });
 
-    // 6. Handle RUN_BUILD
+    // 6. Handle RUN_BUILD — MUST always end with a terminal BUILD_STATUS, otherwise
+    // the webview stays stuck on "running" (it sets that optimistically on click).
     const runDisposable = bus.on('RUN_BUILD', async (msg) => {
+      const jobName = msg.jobName || config.jenkinsJobName;
       if (!config.jenkinsUrl) {
-        bus.send({ type: 'LOG_LINE', line: 'Jenkins URL not configured', stream: 'stderr' });
+        bus.send({ type: 'LOG_LINE', line: 'Jenkins URL not configured (settings: jenkinsNodeEditor.jenkinsUrl)', stream: 'stderr' });
+        bus.send({ type: 'BUILD_STATUS', status: 'failure' });
+        return;
+      }
+      if (!jobName) {
+        bus.send({ type: 'LOG_LINE', line: 'Jenkins job not configured (settings: jenkinsNodeEditor.jenkinsJobName)', stream: 'stderr' });
+        bus.send({ type: 'BUILD_STATUS', status: 'failure' });
         return;
       }
       try {
         const client = new JenkinsClient(config);
-        const queueUrl = await client.triggerBuild(msg.jobName, msg.params);
-        const buildNumber = await client.getBuildNumber(queueUrl);
+        const queueUrl = await client.triggerBuild(jobName, msg.params);
         bus.send({ type: 'BUILD_STATUS', status: 'running' });
-        for await (const line of client.streamLogs(msg.jobName, buildNumber)) {
+        const buildNumber = await client.getBuildNumber(queueUrl);
+        for await (const line of client.streamLogs(jobName, buildNumber)) {
           bus.send({ type: 'LOG_LINE', line, stream: 'stdout' });
         }
         bus.send({ type: 'BUILD_STATUS', status: 'success' });
       } catch (err) {
-        bus.send({ type: 'LOG_LINE', line: String(err), stream: 'stderr' });
+        bus.send({ type: 'LOG_LINE', line: err instanceof Error ? err.message : String(err), stream: 'stderr' });
         bus.send({ type: 'BUILD_STATUS', status: 'failure' });
       }
     });
 
-    // 7. Handle ABORT_BUILD
+    // 7. Handle ABORT_BUILD — always send a terminal status.
     const abortDisposable = bus.on('ABORT_BUILD', async (msg) => {
-      if (!config.jenkinsUrl) return;
+      const jobName = msg.jobName || config.jenkinsJobName;
+      if (!config.jenkinsUrl || !jobName || msg.buildNumber === undefined) {
+        bus.send({ type: 'LOG_LINE', line: 'Nothing to abort (no Jenkins URL, job, or build number).', stream: 'stderr' });
+        bus.send({ type: 'BUILD_STATUS', status: 'aborted' });
+        return;
+      }
       try {
         const client = new JenkinsClient(config);
-        await client.abortBuild(msg.jobName, msg.buildNumber);
+        await client.abortBuild(jobName, msg.buildNumber);
         bus.send({ type: 'BUILD_STATUS', status: 'aborted' });
       } catch (err) {
         logger.error('Abort error', err);
+        bus.send({ type: 'LOG_LINE', line: err instanceof Error ? err.message : String(err), stream: 'stderr' });
+        bus.send({ type: 'BUILD_STATUS', status: 'failure' });
       }
     });
 
@@ -354,6 +369,7 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
       jenkinsUrl: config.get<string>('jenkinsUrl', ''),
       jenkinsUser: config.get<string>('jenkinsUser', ''),
       jenkinsToken: await this.resolveToken(),
+      jenkinsJobName: config.get<string>('jenkinsJobName', ''),
       autoLayout: config.get<boolean>('autoLayout', true),
       syncDelay: config.get<number>('syncDelay', 300),
     };

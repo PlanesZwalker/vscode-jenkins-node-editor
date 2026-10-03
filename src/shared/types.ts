@@ -186,6 +186,8 @@ export type ExtensionConfig = {
   jenkinsUrl: string;
   jenkinsUser: string;
   jenkinsToken: string;
+  /** Jenkins job path for "Run Build" (e.g. "my-folder/my-job"). Empty = not configured. */
+  jenkinsJobName: string;
   autoLayout: boolean;
   syncDelay: number;
 };
