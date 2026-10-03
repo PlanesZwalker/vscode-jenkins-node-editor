@@ -52,6 +52,7 @@ export function useVSCodeBridge(): void {
       switch (msg.type) {
         case 'INIT':
           store.setGraph(msg.graph);
+          store.setSyncDelay(msg.config?.syncDelay);
           applyThemeVars();
           break;
 

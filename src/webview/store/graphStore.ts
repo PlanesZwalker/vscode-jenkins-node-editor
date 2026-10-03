@@ -42,6 +42,8 @@ type GraphStore = {
   connectionSteps: Array<{ ok: boolean; label: string; detail: string }> | null;
   /** Un test de connexion est en cours. */
   testingConnection: boolean;
+  /** Délai de debounce (ms) avant la synchro graphe → texte (réglage extension). */
+  syncDelay: number;
   stepCatalog: Array<{ name: string; displayName: string; description: string }>;
 
   // ── Actions React Flow ───────────────────────────────────────────────
@@ -74,6 +76,7 @@ type GraphStore = {
   setBuildParam: (name: string, value: string) => void;
   setConnectionSteps: (steps: Array<{ ok: boolean; label: string; detail: string }> | null) => void;
   setTestingConnection: (v: boolean) => void;
+  setSyncDelay: (ms: number | undefined) => void;
 
   // ── Actions logs ─────────────────────────────────────────────────────
   appendLog: (line: string) => void;
@@ -113,6 +116,7 @@ export const useGraphStore = create<GraphStore>()(
     buildParams: {},
     connectionSteps: null,
     testingConnection: false,
+    syncDelay: 300,
     stepCatalog: [],
 
     // ── React Flow handlers ───────────────────────────────────────────
@@ -225,6 +229,7 @@ export const useGraphStore = create<GraphStore>()(
     setBuildParam: (name, value) => set(state => { state.buildParams = { ...state.buildParams, [name]: value }; }),
     setConnectionSteps: (steps) => set(state => { state.connectionSteps = steps; state.testingConnection = false; }),
     setTestingConnection: (v) => set(state => { state.testingConnection = v; }),
+    setSyncDelay: (ms) => set(state => { if (typeof ms === 'number' && ms >= 0) state.syncDelay = ms; }),
 
     // ── Logs ──────────────────────────────────────────────────────────
     appendLog: (line) => set(state => {

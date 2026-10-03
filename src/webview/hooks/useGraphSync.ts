@@ -8,13 +8,12 @@ import { postToExtension } from './useVSCodeBridge';
 import type { GraphModel } from '../../shared/types';
 import type { Node, Edge } from '@xyflow/react';
 
-const DEFAULT_SYNC_DELAY = 300;
-
-export function useGraphSync(syncDelay = DEFAULT_SYNC_DELAY): void {
+export function useGraphSync(): void {
   const nodes = useGraphStore(s => s.nodes);
   const edges = useGraphStore(s => s.edges);
   const isDirty = useGraphStore(s => s.isDirty);
   const markClean = useGraphStore(s => s.markClean);
+  const syncDelay = useGraphStore(s => s.syncDelay);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Tracks whether any node is currently being dragged so we never

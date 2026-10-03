@@ -241,12 +241,21 @@ function AgentInspector({ data, update }: { data: Record<string, unknown>; updat
 
 function StepInspector({ data, update }: { data: Record<string, unknown>; update: (k: string, v: unknown) => void }) {
   const stepType = String(data['type'] ?? 'sh');
+  // Prefer the live Jenkins step catalogue (real step names); fall back to the
+  // built-in list so the selector always works offline.
+  const catalog = useGraphStore(s => s.stepCatalog);
+  const options = React.useMemo(() => {
+    const names = catalog.map(s => s.name).filter(Boolean);
+    const builtin = ['sh', 'bat', 'echo', 'git', 'checkout', 'archiveArtifacts', 'junit', 'withCredentials', 'timeout', 'retry', 'script', 'input', 'sleep', 'stash', 'unstash', 'publishHTML', 'emailext', 'slackSend', 'custom'];
+    return Array.from(new Set([...names, ...builtin])).sort((a, b) => a.localeCompare(b));
+  }, [catalog]);
 
   return <>
     <Section title="Step">
       <Field label="Type" value={stepType}
         onChange={v => { update('type', v); update('label', v); }} type="select"
-        options={['sh', 'bat', 'echo', 'git', 'checkout', 'archiveArtifacts', 'junit', 'withCredentials', 'timeout', 'retry', 'script', 'input', 'sleep', 'stash', 'unstash', 'publishHTML', 'emailext', 'slackSend', 'custom']} />
+        options={options}
+        hint={catalog.length > 0 ? `${catalog.length} steps from Jenkins` : 'built-in list (connect Jenkins for the full catalogue)'} />
     </Section>
 
     {(stepType === 'sh' || stepType === 'bat') && <Section title={stepType === 'bat' ? 'Batch script' : 'Shell script'}>
