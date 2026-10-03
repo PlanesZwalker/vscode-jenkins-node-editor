@@ -5,10 +5,11 @@ import type {
   GraphModel, JenkinsNode, JenkinsEdge, NodeKind, EnvironmentData,
 } from '../shared/types';
 import { applyDagreLayout } from './layout';
+import { parseStep } from './stepParser';
 
 type ParseError = { line: number; column: number; message: string; severity: 'error' | 'warning'; };
 type ParseResult = { graph: GraphModel; errors: ParseError[]; mode: 'declarative' | 'scripted'; };
-type Block = { keyword: string; args: string; body: string; startLine: number; endLine: number; children: Block[]; };
+type Block = { keyword: string; args: string; body: string; fullBody?: string; startLine: number; endLine: number; children: Block[]; rawText?: string; };
 
 let _nodeCounter = 0;
 function nextId(prefix: string): string { return `${prefix}-${++_nodeCounter}`; }
@@ -91,7 +92,7 @@ export function detectMode(source: string): 'declarative' | 'scripted' {
 
 export function tokenizeBlocks(source: string): Block[] {
   const roots: Block[] = [];
-  const stack: Array<{ block: Block; bodyStart: number }> = [];
+  const stack: Array<{ block: Block; bodyStart: number; origBodyStart: number; textStart: number }> = [];
   let line = 1; let i = 0;
 
   function skipString(start: number): number {
@@ -118,15 +119,24 @@ export function tokenizeBlocks(source: string): Block[] {
     if (ch === "'" || ch === '"') { i = skipString(i); continue; }
     if (ch === '{') {
       const parentBodyStart = stack.length > 0 ? stack[stack.length-1].bodyStart : 0;
-      const kw = extractLastKeyword(source.slice(parentBodyStart, i));
+      const header = source.slice(parentBodyStart, i);
+      const kw = extractLastKeyword(header);
+      // Where the statement's keyword begins — used to capture the WHOLE block
+      // text (keyword + args + braces) so it can be re-emitted verbatim.
+      const rel = header.lastIndexOf(kw.keyword);
+      const textStart = parentBodyStart + (rel >= 0 ? rel : header.length);
       const block: Block = { keyword: kw.keyword, args: kw.args, body: '', startLine: line, endLine: 0, children: [] };
       if (stack.length > 0) { stack[stack.length-1].block.children.push(block); } else { roots.push(block); }
-      stack.push({ block, bodyStart: i+1 }); i++; continue;
+      stack.push({ block, bodyStart: i+1, origBodyStart: i+1, textStart }); i++; continue;
     }
     if (ch === '}') {
       if (stack.length > 0) {
-        const { block, bodyStart } = stack.pop()!;
+        const { block, bodyStart, origBodyStart, textStart } = stack.pop()!;
         block.body = source.slice(bodyStart, i); block.endLine = line;
+        // Full body from the opening brace — statements written BEFORE a child
+        // block live only here, not in `body` (which keeps the trailing segment).
+        block.fullBody = source.slice(origBodyStart, i);
+        block.rawText = source.slice(textStart, i + 1);
         if (stack.length > 0) stack[stack.length-1] = { ...stack[stack.length-1], bodyStart: i+1 };
       }
       i++; continue;
@@ -170,8 +180,19 @@ function parseDeclarative(source: string, errors: ParseError[]): GraphModel {
     errors.push({ line: 1, column: 0, message: 'No pipeline { } block found', severity: 'error' });
     return { nodes: [], edges: [], meta: { declarative: true } };
   }
-  const nodes: JenkinsNode[] = []; const edges: JenkinsEdge[] = [];
+  const nodes: JenkinsNode[] = []; const edges: JenkinsEdge[] = []; 
   const meta: GraphModel['meta'] = { declarative: true };
+  // Preserve everything OUTSIDE `pipeline { }` (top-level Groovy helpers,
+  // constants, @Library…). The graph only models the declarative pipeline, so
+  // without this a full regeneration would silently delete hundreds of lines.
+  const raw = pipelineBlock.rawText;
+  if (raw) {
+    const idx = source.indexOf(raw);
+    if (idx >= 0) {
+      meta.preamble = source.slice(0, idx);
+      meta.epilogue = source.slice(idx + raw.length);
+    }
+  }
   const pipelineNode = makeNode('pipeline', 'pipeline', { kind: 'pipeline' });
   nodes.push(pipelineNode);
 
@@ -221,7 +242,7 @@ function parseDeclarative(source: string, errors: ParseError[]): GraphModel {
       if (!VALID.includes(cb.keyword)) continue;
       const pn = makeNode('post', `post: ${cb.keyword}`, { condition: cb.keyword, kind: 'post' });
       nodes.push(pn); edges.push(makeEdge(pipelineNode.id, pn.id, 'contains'));
-      for (const sl of getSimpleLines(cb.body)) {
+      for (const sl of getSimpleLines(cb.fullBody ?? cb.body, cb.children)) {
         const sd = parseStep(sl); if (!sd) continue;
         const sn = makeNode('step', String(sd['type'] ?? 'step'), { ...sd, kind: 'step' });
         nodes.push(sn); edges.push(makeEdge(pn.id, sn.id, 'contains'));
@@ -272,20 +293,39 @@ function buildStageNodes(
       nodes.push(...r.nodes); edges.push(...r.edges); prevId = r.lastId;
     }
   } else if (stepsBlock) {
-    for (const sl of getSimpleLines(stepsBlock.body)) {
-      const sd = parseStep(sl); if (!sd) continue;
-      const sn = makeNode('step', String(sd['type'] ?? 'step'), { ...sd, kind: 'step' });
-      nodes.push(sn); edges.push(makeEdge(stageNode.id, sn.id, 'contains'));
-    }
     const BSMAP: Record<string, string> = {
       timeout: 'timeout', retry: 'retry', withcredentials: 'withCredentials',
       withenv: 'withEnv', script: 'script', docker: 'docker.build',
     };
+    // Emit steps in SOURCE ORDER. Plain statements (sh, echo, checkout([…])) and
+    // child blocks (script{…}, withCredentials([…]){…}) must not be reordered, or
+    // a no-op sync would produce a diff (and change execution order).
+    const fb = stepsBlock.fullBody ?? stepsBlock.body;
+    type Item = { pos: number; type: string; data: Record<string, unknown> };
+    const items: Item[] = [];
+
+    // Child blocks first — record where each one starts in the body.
+    const masked = removeChildBlocks(fb, stepsBlock.children);
     for (const child of stepsBlock.children) {
       if (child.keyword === 'parallel') continue;
       const kl = child.keyword.toLowerCase().replace(/\s*\(.*$/, '');
       const st = BSMAP[kl] ?? child.keyword;
-      const sn = makeNode('step', st, { type: st, kind: 'step', rawContent: child.body });
+      // Keep the WHOLE source text (keyword + args + braces), not just the body,
+      // so script{}/withCredentials([…]){…} round-trip byte-for-byte.
+      const raw = (child.rawText ?? `${child.keyword} ${child.args} {\n${child.body}}`).trim();
+      const pos = fb.indexOf(raw);
+      items.push({ pos: pos >= 0 ? pos : Number.MAX_SAFE_INTEGER, type: st, data: { type: st, kind: 'step', rawContent: raw } });
+    }
+
+    // Plain statements — position them by searching the masked body.
+    for (const sl of getSimpleLines(fb, stepsBlock.children)) {
+      const sd = parseStep(sl); if (!sd) continue;
+      items.push({ pos: masked.indexOf(sl), type: String(sd['type'] ?? 'step'), data: { ...sd, kind: 'step' } });
+    }
+
+    items.sort((a, b) => a.pos - b.pos);
+    for (const it of items) {
+      const sn = makeNode('step', it.type, it.data);
       nodes.push(sn); edges.push(makeEdge(stageNode.id, sn.id, 'contains'));
     }
   }
@@ -320,7 +360,7 @@ function buildScriptedStages(
       const name = extractStringArg(child.args);
       const sn = makeNode('stage', name, { name, label: name, kind: 'stage', sourceLine: child.startLine });
       nodes.push(sn); edges.push(makeEdge(lastId, sn.id, 'sequence')); lastId = sn.id;
-      for (const sl of getSimpleLines(child.body)) {
+      for (const sl of getSimpleLines(child.fullBody ?? child.body, child.children)) {
         const sd = parseStep(sl); if (!sd) continue;
         const stn = makeNode('step', String(sd['type'] ?? 'step'), { ...sd, kind: 'step' });
         nodes.push(stn); edges.push(makeEdge(sn.id, stn.id, 'contains'));
@@ -352,33 +392,6 @@ export function parseAgent(body: string): Record<string, unknown> {
   const labelM = t.match(/label\s+['"]([^'"]+)['"]/);
   if (labelM) return { type: 'label', label: labelM[1] };
   return { type: 'any' };
-}
-
-export function parseStep(line: string): Record<string, unknown> | null {
-  const t = line.trim();
-  if (!t || t.startsWith('//') || t === '}' || t === '{') return null;
-  const shS = t.match(/^sh\s+(['"])(.*?)\1\s*$/s); if (shS) return { type: 'sh', script: shS[2] };
-  const shN = t.match(/^sh\s*\(\s*script:\s*(['"])(.*?)\1/s);
-  if (shN) return { type: 'sh', script: shN[2], returnStdout: /returnStdout\s*:\s*true/.test(t) };
-  const echoM = t.match(/^echo\s+(['"])(.*?)\1/s); if (echoM) return { type: 'echo', message: echoM[2] };
-  const gitUrl = t.match(/^git\s+url:\s*['"]([^'"]+)['"]/);
-  if (gitUrl) {
-    const br = t.match(/branch:\s*['"]([^'"]+)['"]/);
-    return { type: 'git', url: gitUrl[1], branch: br?.[1] ?? 'main' };
-  }
-  if (/^checkout\s+scm/.test(t)) return { type: 'checkout', url: 'scm' };
-  const archN = t.match(/^archiveArtifacts\s+artifacts:\s*['"]([^'"]+)['"]/); if (archN) return { type: 'archiveArtifacts', artifacts: archN[1] };
-  const archS = t.match(/^archiveArtifacts\s+['"]([^'"]+)['"]/); if (archS) return { type: 'archiveArtifacts', artifacts: archS[1] };
-  const jS = t.match(/^junit\s+['"]([^'"]+)['"]/); if (jS) return { type: 'junit', pattern: jS[1] };
-  const jN = t.match(/^junit\s+\w+:\s*['"]([^'"]+)['"]/); if (jN) return { type: 'junit', pattern: jN[1] };
-  const toI = t.match(/^timeout\s*\(\s*time:\s*(\d+)(?:,\s*unit:\s*['"](\w+)['"])?/);
-  if (toI) return { type: 'timeout', time: parseInt(toI[1]), unit: toI[2] ?? 'MINUTES' };
-  const reI = t.match(/^retry\s*\(\s*(\d+)\s*\)/); if (reI) return { type: 'retry', count: parseInt(reI[1]) };
-  if (/^cleanWs\s*\(/.test(t)) return { type: 'custom', rawContent: t };
-  const GKW = new Set(['if', 'else', 'for', 'while', 'def', 'return', 'throw', 'try', 'catch', 'finally', 'switch', 'case', 'import', 'class']);
-  const gFn = t.match(/^(\w[\w.]*)\s*\(/); if (gFn && !GKW.has(gFn[1])) return { type: 'custom', rawContent: t };
-  const gStr = t.match(/^(\w[\w.]*)\s+['"].+/); if (gStr && !GKW.has(gStr[1])) return { type: 'custom', rawContent: t };
-  return null;
 }
 
 export function parseWhen(body: string, children: Block[] = []): Record<string, unknown> {
@@ -529,12 +542,68 @@ function extractStringArg(args: string): string {
   const m = args.match(/['"]([^'"]+)['"]/); return m ? m[1] : args.replace(/['"]/g, '').trim();
 }
 
-function getSimpleLines(body: string): string[] {
+function getSimpleLines(body: string, children?: Block[]): string[] {
+  // Blank out direct child blocks so their bodies don't interfere, then scan the
+  // whole (full) body. Callers pass `fullBody`; masking the children is what makes
+  // statements written BEFORE a child block (checkout([…]), sh '''…''' before a
+  // `script {}`) visible instead of being dropped.
+  const src = children && children.length > 0 ? removeChildBlocks(body, children) : body;
   const result: string[] = []; let depth = 0;
-  for (const rawLine of body.split('\n')) {
-    const t = rawLine.trim(); if (!t || t.startsWith('//')) continue;
-    for (const ch of t) { if (ch === '{') depth++; else if (ch === '}') depth--; }
-    if (depth === 0 && !t.endsWith('{') && !t.endsWith('}')) result.push(t);
+  // Accumulate a statement across lines while inside (), [], or an open string,
+  // so multi-line steps (sh '''…''', checkout([…])) are captured whole instead of
+  // being sliced line-by-line and silently dropped.
+  let buf = ''; let inStr: string | null = null; let inTriple = false;
+  const flush = () => {
+    const t = buf.trim();
+    if (t && !t.startsWith('//') && t !== '}' && t !== '{') result.push(t);
+    buf = '';
+  };
+  for (const rawLine of src.split('\n')) {
+    buf += (buf ? '\n' : '') + rawLine;
+    for (let i = 0; i < rawLine.length; i++) {
+      const ch = rawLine[i];
+      if (inTriple) {
+        if (rawLine.slice(i, i + 3) === inStr) { inTriple = false; inStr = null; i += 2; }
+        continue;
+      }
+      if (inStr) {
+        if (ch === '\\') { i++; continue; }
+        if (ch === inStr) inStr = null;
+        continue;
+      }
+      if (ch === "'" || ch === '"') {
+        if (rawLine.slice(i, i + 3) === ch + ch + ch) { inStr = ch + ch + ch; inTriple = true; i += 2; }
+        else inStr = ch;
+        continue;
+      }
+      if (ch === '{') depth++; else if (ch === '}') depth--;
+      else if (ch === '(' || ch === '[') depth++;
+      else if (ch === ')' || ch === ']') depth--;
+    }
+    // Statement complete only when brackets are balanced, no open string, and the
+    // line does not open a block (ends with `{`).
+    const t = buf.trim();
+    const opensBlock = depth === 0 && t.endsWith('{');
+    if (depth <= 0 && !inStr && !inTriple && !opensBlock) flush();
   }
+  flush();
   return result;
+}
+
+/**
+ * Blanks out the text spans covered by direct child blocks so the parent's
+ * statements can be scanned without their bodies interfering. The tokenizer only
+ * stores the trailing body segment, so without this, statements written BEFORE a
+ * child block (e.g. `checkout([…])` and `sh '''…'''` before a `script {}`) are lost.
+ */
+function removeChildBlocks(body: string, children: Block[]): string {
+  let out = body;
+  for (const c of children) {
+    const raw = c.rawText;
+    if (!raw) continue;
+    const idx = out.indexOf(raw);
+    if (idx < 0) continue;
+    out = out.slice(0, idx) + ' '.repeat(raw.length) + out.slice(idx + raw.length);
+  }
+  return out;
 }
