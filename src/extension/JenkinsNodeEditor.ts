@@ -18,7 +18,7 @@ import { computeMinimalEdit, isEditSafe, normalizeEol, usesCrlf } from '../parse
 import { JenkinsValidator } from './JenkinsValidator';
 import { JenkinsClient } from './JenkinsClient';
 import { logger } from './logger';
-import type { ExtensionConfig, GraphModel, VSCodeTheme } from '../shared/types';
+import type { ExtensionConfig, GraphModel, PublicConfig, ConfigKey, VSCodeTheme } from '../shared/types';
 import type { WebviewMessage } from '../shared/messages';
 import { inferNodeId } from '../parser/nodeMapping';
 
@@ -132,6 +132,8 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
         const merged = mergePositions(graph, saved);
         this.lastGraph.set(document.uri.toString(), merged);
         bus.send({ type: 'INIT', graph: merged, theme: mapVSCodeTheme(vscode.window.activeColorTheme.kind), config });
+        // Seed the webview config panel (token presence only, never the value).
+        bus.send({ type: 'CONFIG', config: this.publicConfig(config) });
         // Never fail silently: surface parse errors/warnings to the webview.
         if (errors.length > 0) bus.send({ type: 'PARSE_ERRORS', errors });
         // Fetch the Jenkins step catalogue in the background (non-blocking) so the
@@ -174,13 +176,11 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
     // the webview stays stuck on "running" (it sets that optimistically on click).
     const runDisposable = bus.on('RUN_BUILD', async (msg) => {
       const jobName = msg.jobName || config.jenkinsJobName;
-      if (!config.jenkinsUrl) {
-        bus.send({ type: 'LOG_LINE', line: 'Jenkins URL not configured (settings: jenkinsNodeEditor.jenkinsUrl)', stream: 'stderr' });
-        bus.send({ type: 'BUILD_STATUS', status: 'failure' });
-        return;
-      }
-      if (!jobName) {
-        bus.send({ type: 'LOG_LINE', line: 'Jenkins job not configured (settings: jenkinsNodeEditor.jenkinsJobName)', stream: 'stderr' });
+      // Missing settings → ask the webview to open the configuration panel.
+      const missing = this.missingBuildKeys(config);
+      if (missing.length > 0) {
+        bus.send({ type: 'LOG_LINE', line: `Jenkins not configured — missing: ${missing.join(', ')}`, stream: 'stderr' });
+        bus.send({ type: 'CONFIG_REQUIRED', missing });
         bus.send({ type: 'BUILD_STATUS', status: 'failure' });
         return;
       }
@@ -218,7 +218,22 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
       }
     });
 
-    // 8. Listen to document changes
+    // 8. Handle SET_CONFIG — persist a setting edited from the webview panel.
+    const setConfigDisposable = bus.on('SET_CONFIG', async (msg) => {
+      try {
+        await this.setConfigValue(msg.key, msg.value);
+        const updated = await this.getConfig();
+        bus.send({ type: 'CONFIG', config: this.publicConfig(updated) });
+        if (this.missingBuildKeys(updated).length === 0) {
+          bus.send({ type: 'LOG_LINE', line: 'Jenkins configuration saved — you can run the build.', stream: 'stdout' });
+        }
+      } catch (err) {
+        logger.error('Failed to save setting', err);
+        bus.send({ type: 'LOG_LINE', line: `Failed to save setting: ${err instanceof Error ? err.message : String(err)}`, stream: 'stderr' });
+      }
+    });
+
+    // 9. Listen to document changes
     const docChangeDisposable = vscode.workspace.onDidChangeTextDocument(async (e) => {
       if (e.document.uri.toString() !== document.uri.toString()) return;
       if (this.syncDepth > 0) return;
@@ -249,9 +264,42 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
       validateDisposable.dispose();
       runDisposable.dispose();
       abortDisposable.dispose();
+      setConfigDisposable.dispose();
       docChangeDisposable.dispose();
       themeDisposable.dispose();
     });
+  }
+
+  // ─── Configuration Jenkins ────────────────────────────────────────────
+
+  /** Réglages requis pour déclencher un build, dans l'ordre d'affichage. */
+  private missingBuildKeys(config: ExtensionConfig): ConfigKey[] {
+    const missing: ConfigKey[] = [];
+    if (!config.jenkinsUrl) missing.push('jenkinsUrl');
+    if (!config.jenkinsUser) missing.push('jenkinsUser');
+    if (!config.jenkinsJobName) missing.push('jenkinsJobName');
+    if (!config.jenkinsToken) missing.push('jenkinsToken');
+    return missing;
+  }
+
+  /** Vue de la config sûre à transmettre à la webview (jamais le token). */
+  private publicConfig(config: ExtensionConfig): PublicConfig {
+    return {
+      jenkinsUrl: config.jenkinsUrl,
+      jenkinsUser: config.jenkinsUser,
+      jenkinsJobName: config.jenkinsJobName,
+      hasToken: !!config.jenkinsToken,
+    };
+  }
+
+  /** Enregistre un réglage (token → SecretStorage, le reste → settings global). */
+  async setConfigValue(key: ConfigKey, value: string): Promise<void> {
+    if (key === 'jenkinsToken') {
+      await this.storeToken(value);
+      return;
+    }
+    const cfg = vscode.workspace.getConfiguration('jenkinsNodeEditor');
+    await cfg.update(key, value, vscode.ConfigurationTarget.Global);
   }
 
   // ─── API pour les commandes de la palette ─────────────────────────────
