@@ -23,6 +23,11 @@ export type ExtensionMessage =
   /** Résultat d'une validation (locale ou via API Jenkins) */
   | { type: 'VALIDATION_RESULT'; errors: ValidationError[] }
 
+  /** Erreurs/avertissements remontés par le parser (fichier illisible, accolades
+   *  non équilibrées, pipeline scripted partiel…). Sans ce message, un parse qui
+   *  échoue produit un graphe vide *silencieusement*. */
+  | { type: 'PARSE_ERRORS'; errors: ValidationError[] }
+
   /** Catalogue des steps disponibles sur l'instance Jenkins */
   | { type: 'STEP_CATALOG'; steps: StepDefinition[] }
 

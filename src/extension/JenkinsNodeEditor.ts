@@ -9,6 +9,7 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import { JenkinsfileParser } from '../parser/JenkinsfileParser';
 import { JenkinsfileGenerator } from '../parser/JenkinsfileGenerator';
 import { MessageBus } from './MessageBus';
@@ -24,7 +25,7 @@ import type { ExtensionConfig, GraphModel, VSCodeTheme } from '../shared/types';
 function getNonce(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let nonce = '';
-  const bytes = require('crypto').randomBytes(32) as Buffer;
+  const bytes = crypto.randomBytes(32) as Buffer;
   for (const b of bytes) { nonce += chars[b % chars.length]; }
   return nonce;
 }
@@ -121,12 +122,22 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
     // 3. Handle READY — send initial graph
     const readyDisposable = bus.on('READY', async () => {
       try {
-        const { graph } = await this.parser.parse(document.getText());
+        const { graph, errors } = await this.parser.parse(document.getText());
         const saved = await posStore.load();
         const merged = mergePositions(graph, saved);
         bus.send({ type: 'INIT', graph: merged, theme: mapVSCodeTheme(vscode.window.activeColorTheme.kind), config });
+        // Never fail silently: surface parse errors/warnings to the webview.
+        if (errors.length > 0) bus.send({ type: 'PARSE_ERRORS', errors });
+        // Fetch the Jenkins step catalogue in the background (non-blocking) so the
+        // palette can offer real steps. Silently skipped when Jenkins isn't set up.
+        if (config.jenkinsUrl) {
+          new JenkinsClient(config).getStepCatalog()
+            .then(steps => { if (steps.length > 0) bus.send({ type: 'STEP_CATALOG', steps }); })
+            .catch(err => logger.warn(`Step catalogue unavailable: ${err instanceof Error ? err.message : String(err)}`));
+        }
       } catch (err) {
         logger.error('Failed to parse on READY', err);
+        bus.send({ type: 'PARSE_ERRORS', errors: [{ severity: 'error', message: `Parse failed: ${err instanceof Error ? err.message : String(err)}` }] });
       }
     });
 
@@ -188,10 +199,11 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
       if (e.document.uri.toString() !== document.uri.toString()) return;
       if (this.syncDepth > 0) return;
       try {
-        const { graph } = await this.parser.parse(e.document.getText());
+        const { graph, errors } = await this.parser.parse(e.document.getText());
         const saved = await posStore.load();
         const merged = mergePositions(graph, saved);
         bus.send({ type: 'DOC_CHANGED', graph: merged });
+        bus.send({ type: 'PARSE_ERRORS', errors });
       } catch (err) {
         logger.error('Parse error on doc change', err);
       }

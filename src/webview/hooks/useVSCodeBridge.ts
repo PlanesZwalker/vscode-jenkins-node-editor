@@ -72,6 +72,11 @@ export function useVSCodeBridge(): void {
           store.setValidationErrors(msg.errors);
           break;
 
+        case 'PARSE_ERRORS':
+          // Surface parser errors/warnings so a failed parse is never silent.
+          store.setValidationErrors(msg.errors);
+          break;
+
         case 'STEP_CATALOG':
           store.setStepCatalog(msg.steps);
           break;
@@ -99,5 +104,5 @@ export function useVSCodeBridge(): void {
     }
 
     return () => window.removeEventListener('message', handler);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // mount-only: bridge handlers intentionally capture the initial store
 }
