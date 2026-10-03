@@ -13,6 +13,7 @@ import { JenkinsfileParser } from '../parser/JenkinsfileParser';
 import { JenkinsfileGenerator } from '../parser/JenkinsfileGenerator';
 import { MessageBus } from './MessageBus';
 import { PositionStore, extractPositions, mergePositions } from './PositionStore';
+import { computeMinimalEdit, isEditSafe, normalizeEol, usesCrlf } from '../parser/surgicalEdit';
 import { JenkinsValidator } from './JenkinsValidator';
 import { JenkinsClient } from './JenkinsClient';
 import { logger } from './logger';
@@ -268,24 +269,40 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
     graph: GraphModel,
     document: vscode.TextDocument
   ): Promise<void> {
-    // TODO: Voir docs/PHASE4.md §4.2 et §4.7
-    //
-    // 1. Générer le Jenkinsfile depuis le graphe : this.generator.generate(graph)
-    // 2. Créer un WorkspaceEdit qui remplace tout le contenu du document
-    // 3. Appliquer l'edit : vscode.workspace.applyEdit(edit)
-    // 4. Gérer le flag isSyncing pour éviter la boucle (voir §4.7)
+    // The graph is a lossy view of the Jenkinsfile, so we must NOT regenerate the
+    // whole file (that destroyed ~90% of a real 780-line file). Instead: regenerate,
+    // diff against the current text, and replace only the smallest changed region.
+    // Everything outside that region is preserved byte-for-byte. A safety guard
+    // refuses edits that would delete most of the file (lossy regeneration).
+    const current = document.getText();
+    let regenerated = this.generator.generate(graph);
+    if (!regenerated.trim()) return;
 
-    const text = this.generator.generate(graph);
-    if (!text.trim()) return;
-    const edit = new vscode.WorkspaceEdit();
-    const fullRange = new vscode.Range(
-      document.positionAt(0),
-      document.positionAt(document.getText().length),
+    // Match the document's line endings (generator always emits LF). Without this
+    // a CRLF Jenkinsfile diffs as "every line changed" → full-file rewrite.
+    regenerated = normalizeEol(regenerated, usesCrlf(current));
+
+    const edit = computeMinimalEdit(current, regenerated);
+    if (!edit) return; // nothing changed — no write, no document touch
+
+    const safety = isEditSafe(edit, current.length);
+    if (!safety.safe) {
+      logger.warn(`Graph sync skipped — ${safety.reason}`);
+      vscode.window.showWarningMessage(
+        `Jenkins Node Editor: ${safety.reason}`
+      );
+      return;
+    }
+
+    const wsEdit = new vscode.WorkspaceEdit();
+    wsEdit.replace(
+      document.uri,
+      new vscode.Range(document.positionAt(edit.start), document.positionAt(edit.end)),
+      edit.newText,
     );
-    edit.replace(document.uri, fullRange, text);
     this.syncDepth++;
     try {
-      await vscode.workspace.applyEdit(edit);
+      await vscode.workspace.applyEdit(wsEdit);
     } finally {
       this.syncDepth--;
     }
