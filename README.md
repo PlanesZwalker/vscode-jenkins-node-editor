@@ -10,7 +10,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Tests](https://img.shields.io/badge/tests-53%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-59%20passed-brightgreen)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
 
 </div>
@@ -84,7 +84,8 @@ The UI is styled after **Blue Ocean**, Jenkins' own modern pipeline visualizatio
 | **Node Palette** | 20+ node types in collapsible groups ÔÇö drag onto canvas to add |
 | **Rich Node Inspector** | Full property editor for every node type: env vars, parameters, options, triggers, `when` conditions, post conditions, all step types |
 | **Validation** | Local syntax check + optional remote Jenkins API validation, with inline node error markers (errors are mapped to their stage by name/line) |
-| **Guided Setup** | If “Run Build” fails because Jenkins isn't configured, a **configuration panel opens automatically** so you can fill in URL / user / job / token in place — no need to hunt through `settings.json` |
+| **Guided Setup** | If “Run Build” fails because Jenkins isn't configured, a **configuration panel opens automatically** so you can fill in URL / user / job / branch / token in place — no need to hunt through `settings.json` |
+| **Build Parameters** | The `parameters {}` block of the Jenkinsfile is parsed and rendered as a form (text / `booleanParam` / `choice`); values are sent with **Run Build**, so you can set `FORCE_BUILD`, `BUILD_WORKERS`, etc. |
 | **CSRF-safe Builds** | Fetches a Jenkins CSRF crumb before every POST; crumb is cached and invalidated on 403 |
 | **Secure Token Storage** | Jenkins API token stored in VS Code's encrypted **SecretStorage**, never in `settings.json` |
 | **Build Trigger** | Trigger Jenkins builds directly from the editor |
@@ -452,6 +453,7 @@ Open VS Code Settings (`Ctrl+,`) and search for **Jenkins Node Editor**:
 | `jenkinsNodeEditor.jenkinsUrl` | string | `""` | Jenkins server URL, e.g. `http://localhost:8080` |
 | `jenkinsNodeEditor.jenkinsUser` | string | `""` | Jenkins username for API auth |
 | `jenkinsNodeEditor.jenkinsJobName` | string | `""` | Jenkins job path for **Run Build**, e.g. `my-folder/my-job`. Required to trigger a build. |
+| `jenkinsNodeEditor.jenkinsBranch` | string | `""` | Optional branch for multibranch jobs (e.g. `dev`). Appended to the job path (`glsl` + `dev` → `glsl/job/dev`). Leave empty if the job path already contains the branch. |
 | `jenkinsNodeEditor.autoLayout` | boolean | `true` | Auto-layout graph when opening a file |
 | `jenkinsNodeEditor.syncDelay` | number | `300` | Debounce delay (ms) before syncing graph ÔåÆ text |
 
@@ -595,6 +597,7 @@ npm run test:unit
 ✓ test/suite/real-world.test.ts (9 tests)
 ✓ test/suite/surgical-edit.test.ts (14 tests)
 ✓ test/suite/scripted-when-mapping.test.ts (11 tests)
+✓ test/suite/build-params.test.ts (6 tests)
 
   JenkinsfileParser — simple.Jenkinsfile
     ✓ parses without fatal errors
@@ -694,7 +697,7 @@ Apache 2.0 ┬® 2026 [PlanesZwalker](https://github.com/PlanesZwalker) ÔÇö s
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Tests](https://img.shields.io/badge/tests-53%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-59%20passed-brightgreen)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
 
 </div>
