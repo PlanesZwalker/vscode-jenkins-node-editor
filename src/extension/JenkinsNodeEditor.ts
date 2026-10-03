@@ -19,6 +19,8 @@ import { JenkinsValidator } from './JenkinsValidator';
 import { JenkinsClient } from './JenkinsClient';
 import { logger } from './logger';
 import type { ExtensionConfig, GraphModel, VSCodeTheme } from '../shared/types';
+import type { WebviewMessage } from '../shared/messages';
+import { inferNodeId } from '../parser/nodeMapping';
 
 // ─── Utilitaires ────────────────────────────────────────────────────────────
 
@@ -50,6 +52,9 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
 
   /** Map docUri → { bus, panel } pour les panels ouverts */
   private readonly activePanels = new Map<string, { bus: MessageBus; panel: vscode.WebviewPanel }>();
+
+  /** Dernier graphe connu par document — sert à rattacher les erreurs aux nœuds. */
+  private readonly lastGraph = new Map<string, GraphModel>();
 
   /**
    * Sync-depth counter instead of a boolean flag.
@@ -125,6 +130,7 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
         const { graph, errors } = await this.parser.parse(document.getText());
         const saved = await posStore.load();
         const merged = mergePositions(graph, saved);
+        this.lastGraph.set(document.uri.toString(), merged);
         bus.send({ type: 'INIT', graph: merged, theme: mapVSCodeTheme(vscode.window.activeColorTheme.kind), config });
         // Never fail silently: surface parse errors/warnings to the webview.
         if (errors.length > 0) bus.send({ type: 'PARSE_ERRORS', errors });
@@ -154,7 +160,10 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
       try {
         const validator = new JenkinsValidator(config);
         const errors = await validator.validate(msg.content ?? document.getText());
-        bus.send({ type: 'VALIDATION_RESULT', errors });
+        // Attach each error to its node so the webview can show inline markers.
+        const graph = this.lastGraph.get(document.uri.toString()) ?? null;
+        const mapped = errors.map(e => ({ ...e, nodeId: e.nodeId ?? inferNodeId(e, graph) }));
+        bus.send({ type: 'VALIDATION_RESULT', errors: mapped });
       } catch (err) {
         logger.error('Validation error', err);
         bus.send({ type: 'VALIDATION_RESULT', errors: [] });
@@ -202,6 +211,7 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
         const { graph, errors } = await this.parser.parse(e.document.getText());
         const saved = await posStore.load();
         const merged = mergePositions(graph, saved);
+        this.lastGraph.set(document.uri.toString(), merged);
         bus.send({ type: 'DOC_CHANGED', graph: merged });
         bus.send({ type: 'PARSE_ERRORS', errors });
       } catch (err) {
@@ -217,6 +227,7 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
     // 10. Cleanup on dispose
     webviewPanel.onDidDispose(() => {
       this.activePanels.delete(document.uri.toString());
+      this.lastGraph.delete(document.uri.toString());
       bus.dispose();
       readyDisposable.dispose();
       graphChangedDisposable.dispose();
@@ -226,6 +237,21 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
       docChangeDisposable.dispose();
       themeDisposable.dispose();
     });
+  }
+
+  // ─── API pour les commandes de la palette ─────────────────────────────
+
+  /** Envoie une requête à la webview active (utilisé par les commandes de la palette). */
+  sendToActive(message: WebviewMessage): boolean {
+    const active = [...this.activePanels.values()].at(-1);
+    if (!active) return false;
+    active.bus.send(message as never);
+    return true;
+  }
+
+  /** Vrai si au moins un éditeur nodal est ouvert. */
+  get hasActiveEditor(): boolean {
+    return this.activePanels.size > 0;
   }
 
   // ─── Génération HTML ───────────────────────────────────────────────────

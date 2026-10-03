@@ -64,17 +64,19 @@ export function activate(context: vscode.ExtensionContext): void {
   // Commande : valider le Jenkinsfile
   context.subscriptions.push(
     vscode.commands.registerCommand('jenkinsNodeEditor.validate', () => {
-      // La validation est déclenchée via le MessageBus depuis la webview active
-      // Cette commande est un raccourci clavier / palette
-      vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
-      // TODO Phase 5 : envoyer VALIDATE_REQUEST au panel actif
+      // Envoie la requête à la webview active ; sinon, éditeur non ouvert.
+      if (!editor.sendToActive({ type: 'VALIDATE_REQUEST' })) {
+        vscode.window.showInformationMessage('Jenkins Node Editor is not open — open a Jenkinsfile first.');
+      }
     })
   );
 
   // Commande : lancer un build Jenkins
   context.subscriptions.push(
     vscode.commands.registerCommand('jenkinsNodeEditor.runBuild', () => {
-      // TODO Phase 5 : envoyer RUN_BUILD au panel actif
+      if (!editor.sendToActive({ type: 'RUN_BUILD' })) {
+        vscode.window.showInformationMessage('Jenkins Node Editor is not open — open a Jenkinsfile first.');
+      }
     })
   );
 
