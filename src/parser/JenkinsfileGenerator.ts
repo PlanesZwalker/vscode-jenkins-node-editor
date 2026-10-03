@@ -3,6 +3,7 @@
 // Voir docs/PHASE3.md §3.5 pour l'implémentation complète
 
 import type { GraphModel, JenkinsNode, JenkinsEdge, StepData, AgentData } from '../shared/types';
+import { isRawStep } from './stepParser';
 
 export class JenkinsfileGenerator {
   private indent = 0;
@@ -18,7 +19,21 @@ export class JenkinsfileGenerator {
       this.generateScripted(model);
     }
 
-    return this.lines.join('\n') + '\n';
+    let out = this.lines.join('\n') + '\n';
+    // Re-attach the text that lives outside `pipeline { }` (Groovy helpers,
+    // constants, @Library…) — captured by the parser, never modelled as nodes.
+    const pre = model.meta.preamble;
+    const epi = model.meta.epilogue;
+    if (pre) out = pre + out;
+    // The source epilogue normally starts with the newline that followed `}`;
+    // strip it (LF or CRLF) so we do not emit a blank line absent from the file.
+    if (epi) {
+      const c0 = epi.charCodeAt(0);
+      const c1 = epi.charCodeAt(1);
+      const stripped = c0 === 13 && c1 === 10 ? epi.slice(2) : c0 === 10 ? epi.slice(1) : epi;
+      out = out + stripped;
+    }
+    return out;
   }
 
   // ─── Écriture indentée ───────────────────────────────────────────────
@@ -33,6 +48,18 @@ export class JenkinsfileGenerator {
     fn();
     this.indent--;
     this.write('}');
+  }
+
+  /** Émet un fragment source multi-ligne tel quel, en préservant l'indentation interne. */
+  private writeRaw(text: string): void {
+    // `rawContent` comes from the parser trimmed, so the FIRST line has no leading
+    // indent — apply the generator's current indent to it. Subsequent lines keep
+    // their original indentation (correct relative layout for heredocs/blocks).
+    const lines = text.split('\n');
+    lines.forEach((line, i) => {
+      const l = line.length > 0 && line.charCodeAt(line.length - 1) === 13 ? line.slice(0, -1) : line;
+      this.lines.push(i === 0 ? '  '.repeat(this.indent) + l : l);
+    });
   }
 
   // ─── Génération déclarative ──────────────────────────────────────────
@@ -260,6 +287,15 @@ export class JenkinsfileGenerator {
 
   private generateStep(node: JenkinsNode): void {
     const d = node.data as StepData;
+    const raw = (d as unknown as Record<string, unknown>)['rawContent'];
+    // Fidelity: steps we cannot decompose (script{}, sh '''…''', checkout([…]),
+    // withCredentials([…]), any custom call) are emitted VERBATIM from the source
+    // text captured by the parser. Re-generating them would lose the original
+    // quoting/structure and produce a massive diff (and corrupted Groovy).
+    if (isRawStep(d as unknown as Record<string, unknown>) && typeof raw === 'string') {
+      this.writeRaw(raw);
+      return;
+    }
     switch (d.type) {
       case 'sh':
         if (d.returnStdout) { this.write(`sh(script: '${escapeGroovyString(d.script ?? '')}', returnStdout: true)`); }

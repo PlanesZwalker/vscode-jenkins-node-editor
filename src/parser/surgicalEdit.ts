@@ -94,7 +94,7 @@ export function isEditSafe(
   originalLength: number,
   options: EditSafetyOptions = {},
 ): EditSafety {
-  const { maxRemovedFraction = 0.5, minFileSizeForGuard = 400 } = options;
+  const { maxRemovedFraction = 0.35, minFileSizeForGuard = 400 } = options;
 
   if (originalLength < minFileSizeForGuard) return { safe: true };
 

@@ -171,6 +171,13 @@ export type GraphModel = {
     parameters?: ParameterDef[];
     triggers?: TriggerDef[];
     environment?: EnvironmentData;
+    /**
+     * Source text surrounding the `pipeline { }` block (top-level Groovy helpers,
+     * constants, @Library annotations…). Preserved verbatim so a full regeneration
+     * never destroys them — the graph only models the declarative pipeline.
+     */
+    preamble?: string;
+    epilogue?: string;
   };
 };
 
