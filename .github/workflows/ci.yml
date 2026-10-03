@@ -38,16 +38,14 @@ jobs:
       - name: Unit tests (Vitest)
         run: npm run test:unit
 
-      # E2E harness (test/suite/index.js) is not implemented yet — tracked as WIP.
+      # E2E harness: test/suite/index.js + *.e2e.js run inside a real VS Code.
       - name: E2E tests — Linux (xvfb)
         if: runner.os == 'Linux'
         run: xvfb-run -a npm run test:e2e
-        continue-on-error: true
 
       - name: E2E tests — macOS / Windows
         if: runner.os != 'Linux'
         run: npm run test:e2e
-        continue-on-error: true
 
       - name: Package VSIX
         run: npx vsce package --no-dependencies
