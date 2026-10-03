@@ -84,6 +84,7 @@ The UI is styled after **Blue Ocean**, Jenkins' own modern pipeline visualizatio
 | **Node Palette** | 20+ node types in collapsible groups ÔÇö drag onto canvas to add |
 | **Rich Node Inspector** | Full property editor for every node type: env vars, parameters, options, triggers, `when` conditions, post conditions, all step types |
 | **Validation** | Local syntax check + optional remote Jenkins API validation, with inline node error markers (errors are mapped to their stage by name/line) |
+| **Guided Setup** | If “Run Build” fails because Jenkins isn't configured, a **configuration panel opens automatically** so you can fill in URL / user / job / token in place — no need to hunt through `settings.json` |
 | **CSRF-safe Builds** | Fetches a Jenkins CSRF crumb before every POST; crumb is cached and invalidated on 403 |
 | **Secure Token Storage** | Jenkins API token stored in VS Code's encrypted **SecretStorage**, never in `settings.json` |
 | **Build Trigger** | Trigger Jenkins builds directly from the editor |
@@ -457,6 +458,12 @@ Open VS Code Settings (`Ctrl+,`) and search for **Jenkins Node Editor**:
 > ÔÜá´©Å `jenkinsNodeEditor.jenkinsToken` has been **deprecated**. Use the secure command below instead.
 
 ### Setting the Jenkins API Token (secure)
+
+> **Easiest path:** click **⚙ Settings** in the toolbar (or just hit **Run Build** —
+> the panel opens by itself if something is missing) and fill in the four fields.
+> The token is written to VS Code's **encrypted SecretStorage**, never to `settings.json`.
+
+The token can also be set from the command palette:
 
 The token is stored in VS Code's **encrypted SecretStorage**, not in `settings.json`:
 
