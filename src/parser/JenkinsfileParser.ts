@@ -236,7 +236,7 @@ function buildStageNodes(
   const stageName = extractStringArg(block.args);
   const data: Record<string, unknown> = { name: stageName, label: stageName, kind: 'stage', sourceLine: block.startLine };
   const ab = block.children.find(c => c.keyword === 'agent'); if (ab) data['agent'] = parseAgent(ab.body);
-  const wb = block.children.find(c => c.keyword === 'when'); if (wb) data['when'] = parseWhen(wb.body);
+  const wb = block.children.find(c => c.keyword === 'when'); if (wb) data['when'] = parseWhen(wb.body, wb.children);
   if (/failFast\s+true/.test(block.body)) data['failFast'] = true;
   const stageNode = makeNode('stage', stageName, data);
   nodes.push(stageNode); edges.push(makeEdge(prevId, stageNode.id, 'sequence'));
@@ -292,21 +292,43 @@ function buildStageNodes(
 // ─── Scripted (basic) ─────────────────────────────────────────────────────────
 
 function parseScripted(source: string, errors: ParseError[]): GraphModel {
-  errors.push({ line: 0, column: 0, message: 'Scripted pipeline: partial support only', severity: 'warning' });
   const nodes: JenkinsNode[] = []; const edges: JenkinsEdge[] = [];
   const blocks = tokenizeBlocks(source);
   const nb = blocks.find(b => b.keyword === 'node') ?? blocks[0];
-  if (!nb) return { nodes, edges, meta: { declarative: false } };
+  if (!nb) {
+    errors.push({ line: 0, column: 0, message: 'Scripted pipeline: no node {} block found', severity: 'warning' });
+    return { nodes, edges, meta: { declarative: false } };
+  }
   const pn = makeNode('pipeline', 'pipeline', { kind: 'pipeline' });
-  nodes.push(pn); let prevId = pn.id;
-  for (const child of nb.children) {
+  nodes.push(pn);
+  // Recurse so nested stages (inside `if`, `timestamps {}`, parallel, …) are found.
+  const r = buildScriptedStages(nb, pn.id);
+  nodes.push(...r.nodes); edges.push(...r.edges);
+  return { nodes, edges, meta: { declarative: false } };
+}
+
+function buildScriptedStages(
+  block: Block, prevId: string,
+): { nodes: JenkinsNode[]; edges: JenkinsEdge[]; lastId: string } {
+  const nodes: JenkinsNode[] = []; const edges: JenkinsEdge[] = [];
+  let lastId = prevId;
+  for (const child of block.children) {
     if (child.keyword === 'stage') {
       const name = extractStringArg(child.args);
-      const sn = makeNode('stage', name, { name, label: name, kind: 'stage' });
-      nodes.push(sn); edges.push(makeEdge(prevId, sn.id, 'sequence')); prevId = sn.id;
+      const sn = makeNode('stage', name, { name, label: name, kind: 'stage', sourceLine: child.startLine });
+      nodes.push(sn); edges.push(makeEdge(lastId, sn.id, 'sequence')); lastId = sn.id;
+      for (const sl of getSimpleLines(child.body)) {
+        const sd = parseStep(sl); if (!sd) continue;
+        const stn = makeNode('step', String(sd['type'] ?? 'step'), { ...sd, kind: 'step' });
+        nodes.push(stn); edges.push(makeEdge(sn.id, stn.id, 'contains'));
+      }
+    } else if (child.children.length > 0) {
+      // Recurse into wrappers (node, timestamps, if, parallel, …).
+      const rr = buildScriptedStages(child, lastId);
+      nodes.push(...rr.nodes); edges.push(...rr.edges); lastId = rr.lastId;
     }
   }
-  return { nodes, edges, meta: { declarative: false } };
+  return { nodes, edges, lastId };
 }
 
 // ─── Exported specialised parsers ────────────────────────────────────────────
@@ -356,18 +378,60 @@ export function parseStep(line: string): Record<string, unknown> | null {
   return null;
 }
 
-export function parseWhen(body: string): Record<string, unknown> {
+export function parseWhen(body: string, children: Block[] = []): Record<string, unknown> {
   const t = body.trim();
-  if (!t) return { type: 'expression', value: '' };
+  // Combinator written directly on the `when` body: anyOf/allOf/not.
+  const comb = t.match(/^\s*(anyOf|allOf|not)\b/);
+  if (comb) return { type: comb[1], conditions: collectWhenConditions(t, children) };
+
+  // Leaf condition on the body (branch / environment / tag / expression).
+  const leaf = t ? parseWhenLeaf(t) : null;
+  if (leaf) return leaf;
+
+  // Condition expressed as a child block: `expression { }`, `anyOf { }`, `not { }`.
+  if (children.length === 1) {
+    const c = children[0];
+    if (c.keyword === 'anyOf' || c.keyword === 'allOf' || c.keyword === 'not') {
+      return { type: c.keyword, conditions: collectWhenConditions(c.body, c.children) };
+    }
+    return { type: 'expression', value: c.body.trim() };
+  }
+  if (children.length > 1) {
+    return { type: 'allOf', conditions: children.map(c => ({ type: 'expression', value: c.body.trim() })) };
+  }
+  return { type: 'expression', value: t };
+}
+
+/** Parses a single leaf condition line (branch / environment / tag / expression). */
+function parseWhenLeaf(t: string): Record<string, unknown> | null {
   const brM = t.match(/^\s*branch\s+['"]([^'"]+)['"]/m); if (brM) return { type: 'branch', value: brM[1] };
   const envM = t.match(/environment\s+name:\s*['"]([^'"]+)['"],\s*value:\s*['"]([^'"]+)['"]/);
   if (envM) return { type: 'environment', name: envM[1], value: envM[2] };
-  const exM = t.match(/expression\s*\{([\s\S]*)\}/); if (exM) return { type: 'expression', value: exM[1].trim() };
-  if (/anyOf/.test(t)) return { type: 'anyOf', conditions: [] };
-  if (/allOf/.test(t)) return { type: 'allOf', conditions: [] };
-  if (/not\s*\{/.test(t)) return { type: 'not', conditions: [] };
-  if (/^\s*tag\s/.test(t)) return { type: 'tag', value: t.match(/tag\s+['"]([^'"]+)['"]/)?.[1] ?? '' };
-  return { type: 'expression', value: t };
+  const exM = t.match(/^\s*expression\s*\{([\s\S]*)\}/); if (exM) return { type: 'expression', value: exM[1].trim() };
+  const tagM = t.match(/^\s*tag\s+['"]([^'"]+)['"]/); if (tagM) return { type: 'tag', value: tagM[1] };
+  return null;
+}
+
+/** Collects the conditions of an anyOf/allOf/not — from child blocks AND body lines. */
+function collectWhenConditions(body: string, children: Block[]): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  for (const c of children) {
+    if (c.keyword === 'anyOf' || c.keyword === 'allOf' || c.keyword === 'not') {
+      out.push({ type: c.keyword, conditions: collectWhenConditions(c.body, c.children) });
+    } else if (c.keyword === 'expression') {
+      out.push({ type: 'expression', value: c.body.trim() });
+    } else {
+      const leaf = parseWhenLeaf(c.keyword + ' ' + c.body.trim());
+      if (leaf) out.push(leaf);
+    }
+  }
+  for (const line of body.split(/[\n;]/)) {
+    const s = line.trim();
+    if (!s || s.startsWith('//')) continue;
+    const leaf = parseWhenLeaf(s);
+    if (leaf) out.push(leaf);
+  }
+  return out;
 }
 
 // ─── Meta parsers ─────────────────────────────────────────────────────────────

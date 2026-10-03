@@ -142,15 +142,31 @@ export class JenkinsfileGenerator {
   }
 
   private generateScripted(model: GraphModel): void {
-    // TODO: Mode scripted basique
+    const pipelineNode = model.nodes.find(n => n.kind === 'pipeline');
     this.block('node', () => {
-      const stages = model.nodes.filter(n => n.kind === 'stage');
-      stages.forEach(stage => {
+      // Stages follow the sequence chain from the pipeline node; fall back to all.
+      const seqEdges = model.edges.filter(e => e.type === 'sequence');
+      const ordered: string[] = [];
+      const visit = (id: string) => {
+        if (ordered.includes(id)) return;
+        const n = model.nodes.find(x => x.id === id);
+        if (!n || n.kind !== 'stage') return;
+        ordered.push(id);
+        seqEdges.filter(e => e.source === id).forEach(e => visit(e.target));
+      };
+      seqEdges.filter(e => e.source === pipelineNode?.id).forEach(e => visit(e.target));
+      if (ordered.length === 0) {
+        model.nodes.filter(n => n.kind === 'stage').forEach(n => ordered.push(n.id));
+      }
+      for (const sid of ordered) {
+        const stage = model.nodes.find(n => n.id === sid);
+        if (!stage) continue;
         const data = stage.data as { name?: string };
         this.block(`stage('${escapeGroovyString(data.name ?? stage.label)}')`, () => {
-          this.write('// TODO: steps');
+          const steps = getChildNodes(stage.id, model).filter(c => c.kind === 'step');
+          for (const s of steps) this.generateStep(s);
         });
-      });
+      }
     });
   }
 
@@ -229,13 +245,17 @@ export class JenkinsfileGenerator {
 
   private writeWhen(when: Record<string, unknown>): void {
     const t = String(when['type'] ?? '');
+    const conditions = Array.isArray(when['conditions']) ? when['conditions'] as Record<string, unknown>[] : [];
     if (t === 'branch') { this.write(`branch '${escapeGroovyString(String(when['value'] ?? ''))}'`); }
     else if (t === 'environment') { this.write(`environment name: '${escapeGroovyString(String(when['name'] ?? ''))}', value: '${escapeGroovyString(String(when['value'] ?? ''))}'`); }
     else if (t === 'expression') { this.block('expression', () => { this.write(String(when['value'] ?? 'true')); }); }
     else if (t === 'tag') { this.write(`tag '${escapeGroovyString(String(when['value'] ?? ''))}'`); }
-    else if (t === 'anyOf') { this.block('anyOf', () => { this.write('// conditions'); }); }
-    else if (t === 'allOf') { this.block('allOf', () => { this.write('// conditions'); }); }
-    else if (t === 'not') { this.block('not', () => { this.write('// condition'); }); }
+    else if (t === 'anyOf' || t === 'allOf' || t === 'not') {
+      this.block(t, () => {
+        if (conditions.length === 0) { this.write('// condition'); return; }
+        for (const c of conditions) this.writeWhen(c);
+      });
+    }
   }
 
   private generateStep(node: JenkinsNode): void {
