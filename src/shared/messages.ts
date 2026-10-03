@@ -9,6 +9,8 @@ import type {
   StepDefinition,
   VSCodeTheme,
   BuildStatus,
+  PublicConfig,
+  ConfigKey,
 } from './types';
 
 // ─── Extension → Webview ────────────────────────────────────────────────────
@@ -38,7 +40,13 @@ export type ExtensionMessage =
   | { type: 'BUILD_STATUS'; status: BuildStatus }
 
   /** Le thème VSCode a changé */
-  | { type: 'THEME_CHANGED'; theme: VSCodeTheme };
+  | { type: 'THEME_CHANGED'; theme: VSCodeTheme }
+
+  /** Configuration Jenkins courante (le token est représenté par hasToken) */
+  | { type: 'CONFIG'; config: PublicConfig }
+
+  /** Réglages manquants : la webview doit ouvrir le panneau de configuration */
+  | { type: 'CONFIG_REQUIRED'; missing: ConfigKey[] };
 
 // ─── Webview → Extension ────────────────────────────────────────────────────
 
@@ -59,4 +67,7 @@ export type WebviewMessage =
   | { type: 'ABORT_BUILD'; jobName?: string; buildNumber?: number }
 
   /** Erreur côté webview */
-  | { type: 'ERROR'; message: string; stack?: string };
+  | { type: 'ERROR'; message: string; stack?: string }
+
+  /** L'utilisateur a enregistré un réglage depuis le panneau de configuration */
+  | { type: 'SET_CONFIG'; key: ConfigKey; value: string };

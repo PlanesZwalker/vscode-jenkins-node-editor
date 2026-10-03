@@ -204,6 +204,17 @@ export type StepDefinition = {
   }>;
 };
 
+/** Configuration visible par la webview (le token n'est JAMAIS transmis, seulement sa présence). */
+export type PublicConfig = {
+  jenkinsUrl: string;
+  jenkinsUser: string;
+  jenkinsJobName: string;
+  hasToken: boolean;
+};
+
+/** Clés de configuration requises pour déclencher un build. */
+export type ConfigKey = 'jenkinsUrl' | 'jenkinsUser' | 'jenkinsJobName' | 'jenkinsToken';
+
 export type VSCodeTheme = 'light' | 'dark' | 'high-contrast';
 
 export type BuildStatus = 'idle' | 'running' | 'success' | 'failure' | 'aborted';
