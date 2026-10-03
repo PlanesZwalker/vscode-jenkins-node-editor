@@ -109,6 +109,10 @@ export function useVSCodeBridge(): void {
           store.setJobParams(msg.params);
           break;
 
+        case 'CONNECTION_RESULT':
+          store.setConnectionSteps(msg.steps);
+          break;
+
         case 'THEME_CHANGED':
           applyThemeVars();
           break;

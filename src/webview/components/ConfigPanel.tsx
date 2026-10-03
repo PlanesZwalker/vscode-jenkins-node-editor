@@ -71,6 +71,10 @@ export default function ConfigPanel({ onClose }: { onClose?: () => void }) {
   const setBuildParam = useGraphStore(s => s.setBuildParam);
   const setConfigMissing = useGraphStore(s => s.setConfigMissing);
   const setBuildError = useGraphStore(s => s.setBuildError);
+  const connectionSteps = useGraphStore(s => s.connectionSteps);
+  const testingConnection = useGraphStore(s => s.testingConnection);
+  const setConnectionSteps = useGraphStore(s => s.setConnectionSteps);
+  const setTestingConnection = useGraphStore(s => s.setTestingConnection);
 
   // Local draft so the user can type without round-tripping on every keystroke.
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -97,6 +101,21 @@ export default function ConfigPanel({ onClose }: { onClose?: () => void }) {
   };
 
   const close = () => { setConfigMissing([]); setBuildError(null); onClose?.(); };
+
+  // Test the connection using the current draft (unsaved values are sent as-is).
+  const testConnection = () => {
+    setConnectionSteps(null);
+    setTestingConnection(true);
+    postToExtension({
+      type: 'TEST_CONNECTION',
+      url: (draft.jenkinsUrl ?? '').trim() || undefined,
+      user: (draft.jenkinsUser ?? '').trim() || undefined,
+      jobName: (draft.jenkinsJobName ?? '').trim() || undefined,
+      branch: (draft.jenkinsBranch ?? '').trim() || undefined,
+      // Only send the token when the user typed one (else the stored one is used).
+      token: (draft.jenkinsToken ?? '').trim() || undefined,
+    });
+  };
 
   return (
     <div style={{
@@ -178,6 +197,32 @@ export default function ConfigPanel({ onClose }: { onClose?: () => void }) {
             </div>
           );
         })}
+      </div>
+
+      {/* Test connection */}
+      <div style={{ padding: '2px 14px 10px' }}>
+        <button onClick={testConnection} disabled={testingConnection}
+          style={{
+            width: '100%', padding: '7px', borderRadius: 4, cursor: testingConnection ? 'default' : 'pointer',
+            background: 'var(--bo-navy)', border: '1px solid var(--bo-blue)', color: 'var(--bo-blue-bright)',
+            fontWeight: 600, fontSize: 11, opacity: testingConnection ? 0.6 : 1,
+          }}>
+          {testingConnection ? 'Testing…' : '🔌 Test connection'}
+        </button>
+
+        {connectionSteps && (
+          <div style={{ marginTop: 8, fontSize: 11, lineHeight: 1.7 }}>
+            {connectionSteps.map((s, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, color: s.ok ? 'var(--bo-green)' : 'var(--bo-red)' }}>
+                <span>{s.ok ? '✓' : '✕'}</span>
+                <span style={{ color: 'var(--bo-grey-light)' }}>
+                  <strong style={{ color: s.ok ? 'var(--bo-green)' : 'var(--bo-red)' }}>{s.label}</strong>
+                  <span style={{ opacity: 0.75 }}> — {s.detail}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Build parameters (from the Jenkinsfile's parameters {} block) */}

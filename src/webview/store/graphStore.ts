@@ -38,6 +38,10 @@ type GraphStore = {
   jobParams: JobParam[];
   /** Valeurs saisies pour les paramètres de build (envoyées au Run Build). */
   buildParams: Record<string, string>;
+  /** Résultat du dernier test de connexion (null = jamais testé). */
+  connectionSteps: Array<{ ok: boolean; label: string; detail: string }> | null;
+  /** Un test de connexion est en cours. */
+  testingConnection: boolean;
   stepCatalog: Array<{ name: string; displayName: string; description: string }>;
 
   // ── Actions React Flow ───────────────────────────────────────────────
@@ -68,6 +72,8 @@ type GraphStore = {
   setJenkinsConfig: (config: PublicConfig) => void;
   setJobParams: (params: JobParam[]) => void;
   setBuildParam: (name: string, value: string) => void;
+  setConnectionSteps: (steps: Array<{ ok: boolean; label: string; detail: string }> | null) => void;
+  setTestingConnection: (v: boolean) => void;
 
   // ── Actions logs ─────────────────────────────────────────────────────
   appendLog: (line: string) => void;
@@ -105,6 +111,8 @@ export const useGraphStore = create<GraphStore>()(
     jenkinsConfig: null,
     jobParams: [],
     buildParams: {},
+    connectionSteps: null,
+    testingConnection: false,
     stepCatalog: [],
 
     // ── React Flow handlers ───────────────────────────────────────────
@@ -215,6 +223,8 @@ export const useGraphStore = create<GraphStore>()(
       state.buildParams = next;
     }),
     setBuildParam: (name, value) => set(state => { state.buildParams = { ...state.buildParams, [name]: value }; }),
+    setConnectionSteps: (steps) => set(state => { state.connectionSteps = steps; state.testingConnection = false; }),
+    setTestingConnection: (v) => set(state => { state.testingConnection = v; }),
 
     // ── Logs ──────────────────────────────────────────────────────────
     appendLog: (line) => set(state => {
