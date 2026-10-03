@@ -16,8 +16,9 @@ function nextId(prefix: string): string { return `${prefix}-${++_nodeCounter}`; 
 // ─── Main class ──────────────────────────────────────────────────────────────
 
 export class JenkinsfileParser {
-  async parse(source: string): Promise<ParseResult> {
+  async parse(source: string, options: { autoLayout?: boolean } = {}): Promise<ParseResult> {
     _nodeCounter = 0;
+    const autoLayout = options.autoLayout !== false;
     const errors: ParseError[] = [];
     const mode = detectMode(source);
     if (!source.trim()) {
@@ -36,9 +37,11 @@ export class JenkinsfileParser {
       let graph: GraphModel;
       if (mode === 'declarative') { graph = parseDeclarative(source, errors); }
       else { graph = parseScripted(source, errors); }
-      const hasPositions = graph.nodes.some(n => n.position.x !== 0 || n.position.y !== 0);
-      if (!hasPositions && graph.nodes.length > 0) {
-        graph = { ...graph, nodes: applyDagreLayout(graph.nodes, graph.edges) };
+      if (autoLayout) {
+        const hasPositions = graph.nodes.some(n => n.position.x !== 0 || n.position.y !== 0);
+        if (!hasPositions && graph.nodes.length > 0) {
+          graph = { ...graph, nodes: applyDagreLayout(graph.nodes, graph.edges) };
+        }
       }
       return { graph, errors, mode };
     } catch (err) {

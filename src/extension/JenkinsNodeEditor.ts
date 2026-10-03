@@ -15,6 +15,7 @@ import { JenkinsfileGenerator } from '../parser/JenkinsfileGenerator';
 import { MessageBus } from './MessageBus';
 import { PositionStore, extractPositions, mergePositions } from './PositionStore';
 import { computeMinimalEdit, isEditSafe, normalizeEol, usesCrlf } from '../parser/surgicalEdit';
+import { applyDagreLayout } from '../parser/layout';
 import { JenkinsValidator } from './JenkinsValidator';
 import { JenkinsClient } from './JenkinsClient';
 import { logger } from './logger';
@@ -127,9 +128,20 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
     // 3. Handle READY — send initial graph
     const readyDisposable = bus.on('READY', async () => {
       try {
-        const { graph, errors } = await this.parser.parse(document.getText());
+        // When autoLayout is off, the parser must not place nodes itself — we apply
+        // saved positions here and dagre-layout ONLY the nodes that have no saved
+        // position. With autoLayout on, the parser layouts everything and saved
+        // positions are merged on top.
+        const { graph, errors } = await this.parser.parse(document.getText(), { autoLayout: config.autoLayout });
         const saved = await posStore.load();
-        const merged = mergePositions(graph, saved);
+        let merged: GraphModel;
+        if (config.autoLayout) {
+          merged = mergePositions(graph, saved);
+        } else {
+          const manual = graph.nodes.map(n => ({ ...n, position: { x: 0, y: 0 } }));
+          const laid = applyDagreLayout(manual, graph.edges, { existingPositions: saved });
+          merged = mergePositions({ ...graph, nodes: laid }, saved);
+        }
         this.lastGraph.set(document.uri.toString(), merged);
         bus.send({ type: 'INIT', graph: merged, theme: mapVSCodeTheme(vscode.window.activeColorTheme.kind), config });
         // Seed the webview config panel (token presence only, never the value).

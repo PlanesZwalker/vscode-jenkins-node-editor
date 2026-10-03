@@ -29,9 +29,11 @@ export function applyDagreLayout(
     direction?: 'TB' | 'LR' | 'BT' | 'RL';
     rankSep?: number;
     nodeSep?: number;
+    /** Positions sauvegardées (id → position). Les nœuds présents gardent leur place. */
+    existingPositions?: Record<string, { x: number; y: number }>;
   } = {}
 ): JenkinsNode[] {
-  const { direction = 'TB', rankSep = 80, nodeSep = 50 } = options;
+  const { direction = 'TB', rankSep = 80, nodeSep = 50, existingPositions } = options;
 
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
@@ -53,6 +55,9 @@ export function applyDagreLayout(
   dagre.layout(g);
 
   return nodes.map(node => {
+    // A saved position always wins: the user placed this node deliberately.
+    const saved = existingPositions?.[node.id];
+    if (saved) return { ...node, position: saved };
     try {
       const { x, y } = g.node(node.id);
       const dims = NODE_DIMENSIONS[node.kind] ?? DEFAULT_DIMS;
