@@ -27,10 +27,6 @@ export class JenkinsfileGenerator {
     this.lines.push('  '.repeat(this.indent) + line);
   }
 
-  private writeln(): void {
-    this.lines.push('');
-  }
-
   private block(header: string, fn: () => void): void {
     this.write(`${header} {`);
     this.indent++;
@@ -46,6 +42,9 @@ export class JenkinsfileGenerator {
     const stageNodes = model.nodes.filter(n => n.kind === 'stage');
     const postNodes = model.nodes.filter(n => n.kind === 'post');
 
+    // NOTE: no blank lines are emitted anywhere — a faithful generator must match
+    // the source layout so the minimal-diff sync (surgicalEdit.ts) only rewrites
+    // the region the user actually changed.
     this.block('pipeline', () => {
       // agent
       if (agentNodes.length > 0) {
@@ -53,7 +52,6 @@ export class JenkinsfileGenerator {
       } else {
         this.write('agent any');
       }
-      this.writeln();
 
       // environment
       const env = model.meta.environment as { variables?: Array<{ key: string; value: string; isSecret?: boolean }> } | undefined;
@@ -64,7 +62,6 @@ export class JenkinsfileGenerator {
             else { this.write(`${key} = '${escapeGroovyString(value)}'`); }
           }
         });
-        this.writeln();
       }
 
       // options
@@ -78,7 +75,6 @@ export class JenkinsfileGenerator {
           const bd = opts['buildDiscarder'] as { numToKeepStr: string } | undefined;
           if (bd) this.write(`buildDiscarder(logRotator(numToKeepStr: '${bd.numToKeepStr}'))`);
         });
-        this.writeln();
       }
 
       // parameters
@@ -93,7 +89,6 @@ export class JenkinsfileGenerator {
             this.write(`${t}(name: '${n}', defaultValue: '${escapeGroovyString(dv)}', description: '${escapeGroovyString(desc)}')`);
           }
         });
-        this.writeln();
       }
 
       // triggers
@@ -105,12 +100,10 @@ export class JenkinsfileGenerator {
             else if (tr['type'] === 'pollSCM') this.write(`pollSCM('${escapeGroovyString(String(tr['schedule'] ?? ''))}')`);
           }
         });
-        this.writeln();
       }
 
       // stages — only top-level stage nodes (sequence edges from pipeline or other stages)
       const seqEdges = model.edges.filter(e => e.type === 'sequence');
-      const allSeqTargets = new Set(seqEdges.map(e => e.target));
       // root stages: sequence targets whose source is the pipeline node
       const pipelineNode = model.nodes.find(n => n.kind === 'pipeline');
       const rootStageIds = seqEdges
@@ -136,14 +129,13 @@ export class JenkinsfileGenerator {
         this.block('stages', () => {
           for (const sid of orderedStages) {
             const sn = model.nodes.find(n => n.id === sid);
-            if (sn) { this.generateStage(sn, model); this.writeln(); }
+            if (sn) { this.generateStage(sn, model); }
           }
         });
       }
 
-      // post
+      // post — emitted in source order (nodes preserve parse/encounter order)
       if (postNodes.length > 0) {
-        this.writeln();
         this.generatePost(postNodes, model);
       }
     });
@@ -158,7 +150,6 @@ export class JenkinsfileGenerator {
         this.block(`stage('${escapeGroovyString(data.name ?? stage.label)}')`, () => {
           this.write('// TODO: steps');
         });
-        this.writeln();
       });
     });
   }
@@ -225,7 +216,7 @@ export class JenkinsfileGenerator {
         if (data.failFast === undefined && allBranches.length > 0) { /* already written */ }
         if (allBranches.length > 0) {
           this.block('parallel', () => {
-            for (const branch of allBranches) { this.generateStage(branch, model); this.writeln(); }
+            for (const branch of allBranches) { this.generateStage(branch, model); }
           });
         }
       } else if (stepChildren.length > 0) {
@@ -265,7 +256,11 @@ export class JenkinsfileGenerator {
         this.write(d.url === 'scm' ? 'checkout scm' : `checkout([$class: 'GitSCM', userRemoteConfigs: [[url: '${escapeGroovyString(d.url ?? '')}']]])`);
         break;
       case 'archiveArtifacts':
-        this.write(`archiveArtifacts artifacts: '${escapeGroovyString(d.artifacts ?? '')}', fingerprint: ${d.fingerprint ?? false}`);
+        if (d.fingerprint !== undefined) {
+          this.write(`archiveArtifacts artifacts: '${escapeGroovyString(d.artifacts ?? '')}', fingerprint: ${d.fingerprint}`);
+        } else {
+          this.write(`archiveArtifacts artifacts: '${escapeGroovyString(d.artifacts ?? '')}'`);
+        }
         break;
       case 'junit':
         this.write(`junit '${escapeGroovyString(d.pattern ?? '')}'`);
@@ -285,14 +280,10 @@ export class JenkinsfileGenerator {
   }
 
   private generatePost(nodes: JenkinsNode[], model: GraphModel): void {
-    const ORDER = ['always', 'success', 'failure', 'unstable', 'changed', 'aborted', 'cleanup'];
-    const sorted = [...nodes].sort((a, b) => {
-      const ac = String((a.data as Record<string, unknown>)['condition'] ?? '');
-      const bc = String((b.data as Record<string, unknown>)['condition'] ?? '');
-      return ORDER.indexOf(ac) - ORDER.indexOf(bc);
-    });
+    // Emit in source order — the parser pushes post nodes in encounter order, and
+    // a faithful generator must not reorder them (that caused a full-file diff).
     this.block('post', () => {
-      for (const pn of sorted) {
+      for (const pn of nodes) {
         const cond = String((pn.data as Record<string, unknown>)['condition'] ?? 'always');
         const stepChildren = getChildNodes(pn.id, model).filter(c => c.kind === 'step');
         this.block(cond, () => {
