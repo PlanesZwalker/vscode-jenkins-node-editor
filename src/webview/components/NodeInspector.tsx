@@ -350,6 +350,13 @@ function StepInspector({ data, update }: { data: Record<string, unknown>; update
     {stepType === 'custom' && <Section title="Raw step">
       <Field label="Raw Groovy" value={String(data['rawContent'] ?? '')} onChange={v => update('rawContent', v)} type="textarea" placeholder="myPlugin(arg: 'value')" />
     </Section>}
+
+    {/* Steps we cannot decompose (script{}, sh '''…''', checkout([…]), withCredentials([…]),
+        any custom call) are edited as their exact source text — the generator
+        re-emits `rawContent` verbatim, so the edit is surgical and lossless. */}
+    {stepType !== 'custom' && typeof data['rawContent'] === 'string' && !data['script'] && !data['message'] && <Section title="Source (preserved verbatim)">
+      <Field label="Groovy source" value={String(data['rawContent'] ?? '')} onChange={v => update('rawContent', v)} type="textarea" hint="Emitted exactly as written — no reformatting." />
+    </Section>}
   </>;
 }
 
