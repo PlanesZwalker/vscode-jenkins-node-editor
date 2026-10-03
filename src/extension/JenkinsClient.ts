@@ -2,6 +2,7 @@
 // Jenkins REST API client — validation, step catalog, build, logs
 
 import { logger } from './logger';
+import { buildJobPath } from './jobPath';
 import type { ValidationError, StepDefinition, ExtensionConfig } from '../shared/types';
 
 export class JenkinsClient {
@@ -13,6 +14,14 @@ export class JenkinsClient {
   constructor(config: ExtensionConfig) {
     this.baseUrl = config.jenkinsUrl.replace(/\/$/, '');
     this.auth = Buffer.from(`${config.jenkinsUser}:${config.jenkinsToken}`).toString('base64');
+  }
+
+  /**
+   * Builds the Jenkins job path for URL interpolation. For multibranch jobs the
+   * branch is a path segment: `glsl` + `dev` → `glsl/job/dev`.
+   */
+  private jobPath(jobName: string, branch?: string): string {
+    return buildJobPath(jobName, branch);
   }
 
   // ─── CSRF crumb ────────────────────────────────────────────────────────
@@ -81,8 +90,8 @@ export class JenkinsClient {
 
   // ─── Build ────────────────────────────────────────────────────────────
 
-  async triggerBuild(jobName: string, params?: Record<string, string>): Promise<string> {
-    const encodedName = jobName.split('/').map(encodeURIComponent).join('/job/');
+  async triggerBuild(jobName: string, params?: Record<string, string>, branch?: string): Promise<string> {
+    const encodedName = this.jobPath(jobName, branch);
     const hasParams = params && Object.keys(params).length > 0;
     const urlPath = hasParams
       ? `/job/${encodedName}/buildWithParameters`
@@ -119,8 +128,8 @@ export class JenkinsClient {
     throw new Error(`Timed out waiting for build number from queue item ${itemId}`);
   }
 
-  async *streamLogs(jobName: string, buildNumber: number): AsyncGenerator<string> {
-    const encodedName = jobName.split('/').map(encodeURIComponent).join('/job/');
+  async *streamLogs(jobName: string, buildNumber: number, branch?: string): AsyncGenerator<string> {
+    const encodedName = this.jobPath(jobName, branch);
     let start = 0;
     let moreData = true;
     while (moreData) {
@@ -138,8 +147,8 @@ export class JenkinsClient {
     }
   }
 
-  async abortBuild(jobName: string, buildNumber: number): Promise<void> {
-    const encodedName = jobName.split('/').map(encodeURIComponent).join('/job/');
+  async abortBuild(jobName: string, buildNumber: number, branch?: string): Promise<void> {
+    const encodedName = this.jobPath(jobName, branch);
     const crumb = await this.crumbHeaders();
     const resp = await this.rawRequest(`/job/${encodedName}/${buildNumber}/stop`, {
       method: 'POST',
