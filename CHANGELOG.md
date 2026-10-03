@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-10-03
+
+### Added
+- **Raw construct support.** `script { … }`, multi-line `sh '''…'''` / `sh """…"""`
+  heredocs, `checkout([…])` and `withCredentials([…])` — constructs the graph model
+  cannot decompose — are now real step nodes holding their **exact source text**
+  (`rawContent`). They are editable in the inspector ("Source (preserved verbatim)")
+  and re-emitted byte-for-byte, so editing a pipeline no longer reformats or drops them.
+- **Lossless surroundings.** Everything outside `pipeline { }` (top-level Groovy
+  helpers, constants, `@Library`) is captured as `meta.preamble` / `meta.epilogue`
+  and re-attached on generation — a regeneration can no longer delete helper code.
+- New `test/fixtures/raw-steps.Jenkinsfile` + `stepParser` / `raw-steps` /
+  `real-constructs` test suites.
+
+### Fixed
+- **Multi-line steps were silently dropped.** The step scanner was line-based, so a
+  `checkout([…])` or `sh '''…'''` spanning several lines was cut at the first line and
+  lost. It now accumulates a statement across lines while inside `()`/`[]`/strings.
+- **Statements before a child block were lost.** The block tokenizer only kept the
+  trailing body segment, so anything written before a `script { … }` disappeared;
+  the full body is now kept and child blocks are masked out.
+- **Step order** is preserved (plain steps and child blocks merged by source offset).
+- **Nested `steps { }` after a nested `stages { }`** were skipped (the `else if`
+  chain); each branch is now evaluated independently.
+- `simple.Jenkinsfile` no-op regeneration is byte-identical again (epilogue newline).
+- Destructive-edit guard threshold tightened 0.5 → 0.35.
+
+## [0.7.0] — 2026-10-03
+
+### Added
+- **E2E harness**: `test/suite/index.js` (mocha) runs `test/suite/**/*.e2e.js` inside a
+  real VS Code via `@vscode/test-electron`; wired as a real CI gate.
+- `untrustedWorkspaces: limited` declared in the manifest.
+- **Build parameters** form: the `parameters {}` block is rendered (text /
+  `booleanParam` / `choice`); values are sent with **Run Build**.
+- `jenkinsBranch` setting (multibranch) and a **Test connection** probe
+  (server reachable → authenticated → job found).
+- Step-type selector now offers real step names from the Jenkins step catalogue.
+
+### Fixed
+- The `autoLayout` setting is honoured (saved positions always win); the `syncDelay`
+  setting is applied by the webview (was hard-coded to 300 ms).
+- `RUN_BUILD` / `ABORT_BUILD` re-read the live config (a panel-saved setting was ignored).
+
 ## [0.6.0] — 2026-10-03
 
 ### Added

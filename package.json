@@ -2,7 +2,7 @@
   "name": "vscode-jenkins-node-editor",
   "displayName": "Jenkins Node Editor",
   "description": "Visual node-based editor for Jenkinsfile pipelines",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "publisher": "PlanesZwalker",
   "engines": {
     "vscode": "^1.85.0"
