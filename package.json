@@ -2,7 +2,7 @@
   "name": "vscode-jenkins-node-editor",
   "displayName": "Jenkins Node Editor",
   "description": "Visual node-based editor for Jenkinsfile pipelines",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "publisher": "PlanesZwalker",
   "engines": {
     "vscode": "^1.85.0"
@@ -27,6 +27,12 @@
   "icon": "media/icon.png",
   "activationEvents": [],
   "main": "./dist/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Reading and visually editing the Jenkinsfile works in a restricted workspace. Triggering a build, fetching the Jenkins step catalogue and validating against a remote Jenkins server are disabled until the workspace is trusted (they send your Jenkins credentials over the network)."
+    }
+  },
   "contributes": {
     "customEditors": [
       {
