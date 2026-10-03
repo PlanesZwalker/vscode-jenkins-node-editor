@@ -3,7 +3,7 @@ src/**
 test/**
 docs/**
 node_modules/**
-*.map
+**/*.map
 tsconfig*.json
 esbuild.config.js
 vite.config.ts
