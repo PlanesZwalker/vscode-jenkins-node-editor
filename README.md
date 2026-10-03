@@ -450,6 +450,7 @@ Open VS Code Settings (`Ctrl+,`) and search for **Jenkins Node Editor**:
 |---------|------|---------|-------------|
 | `jenkinsNodeEditor.jenkinsUrl` | string | `""` | Jenkins server URL, e.g. `http://localhost:8080` |
 | `jenkinsNodeEditor.jenkinsUser` | string | `""` | Jenkins username for API auth |
+| `jenkinsNodeEditor.jenkinsJobName` | string | `""` | Jenkins job path for **Run Build**, e.g. `my-folder/my-job`. Required to trigger a build. |
 | `jenkinsNodeEditor.autoLayout` | boolean | `true` | Auto-layout graph when opening a file |
 | `jenkinsNodeEditor.syncDelay` | number | `300` | Debounce delay (ms) before syncing graph ÔåÆ text |
 

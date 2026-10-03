@@ -2,7 +2,7 @@
   "name": "vscode-jenkins-node-editor",
   "displayName": "Jenkins Node Editor",
   "description": "Visual node-based editor for Jenkinsfile pipelines",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "PlanesZwalker",
   "engines": {
     "vscode": "^1.85.0"
@@ -127,6 +127,11 @@
           "type": "string",
           "default": "",
           "description": "Jenkins username for API authentication"
+        },
+        "jenkinsNodeEditor.jenkinsJobName": {
+          "type": "string",
+          "default": "",
+          "description": "Jenkins job path for 'Run Build' (e.g. 'my-folder/my-job'). Required to trigger a build."
         },
         "jenkinsNodeEditor.jenkinsToken": {
           "type": "string",
