@@ -188,6 +188,8 @@ export type ExtensionConfig = {
   jenkinsToken: string;
   /** Jenkins job path for "Run Build" (e.g. "my-folder/my-job"). Empty = not configured. */
   jenkinsJobName: string;
+  /** Optional branch for multibranch jobs (appended to the job path). */
+  jenkinsBranch: string;
   autoLayout: boolean;
   syncDelay: number;
 };
@@ -209,11 +211,22 @@ export type PublicConfig = {
   jenkinsUrl: string;
   jenkinsUser: string;
   jenkinsJobName: string;
+  /** Branche à cibler pour un job multibranch (ex: 'dev'). Vide = le chemin du job la contient déjà. */
+  jenkinsBranch: string;
   hasToken: boolean;
 };
 
 /** Clés de configuration requises pour déclencher un build. */
-export type ConfigKey = 'jenkinsUrl' | 'jenkinsUser' | 'jenkinsJobName' | 'jenkinsToken';
+export type ConfigKey = 'jenkinsUrl' | 'jenkinsUser' | 'jenkinsJobName' | 'jenkinsBranch' | 'jenkinsToken';
+
+/** Paramètre de build extrait du bloc `parameters {}` du Jenkinsfile. */
+export type JobParam = {
+  name: string;
+  type: string;
+  defaultValue: string;
+  description: string;
+  choices?: string[];
+};
 
 export type VSCodeTheme = 'light' | 'dark' | 'high-contrast';
 

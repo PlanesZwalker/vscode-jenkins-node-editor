@@ -2,7 +2,7 @@
   "name": "vscode-jenkins-node-editor",
   "displayName": "Jenkins Node Editor",
   "description": "Visual node-based editor for Jenkinsfile pipelines",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "publisher": "PlanesZwalker",
   "engines": {
     "vscode": "^1.85.0"
@@ -132,6 +132,11 @@
           "type": "string",
           "default": "",
           "description": "Jenkins job path for 'Run Build' (e.g. 'my-folder/my-job'). Required to trigger a build."
+        },
+        "jenkinsNodeEditor.jenkinsBranch": {
+          "type": "string",
+          "default": "",
+          "description": "Branch to build for multibranch jobs (e.g. 'dev'). Appended to the job path. Leave empty if the job path already contains the branch."
         },
         "jenkinsNodeEditor.jenkinsToken": {
           "type": "string",

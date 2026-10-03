@@ -134,6 +134,15 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
         bus.send({ type: 'INIT', graph: merged, theme: mapVSCodeTheme(vscode.window.activeColorTheme.kind), config });
         // Seed the webview config panel (token presence only, never the value).
         bus.send({ type: 'CONFIG', config: this.publicConfig(config) });
+        // Expose the Jenkinsfile's build parameters so the UI can offer a Run form.
+        const jobParams = (merged.meta.parameters ?? []).map(p => ({
+          name: String(p['name'] ?? ''),
+          type: String(p['type'] ?? 'string'),
+          defaultValue: String(p['defaultValue'] ?? ''),
+          description: String(p['description'] ?? ''),
+          choices: Array.isArray(p['choices']) ? (p['choices'] as string[]) : undefined,
+        })).filter(p => p.name);
+        bus.send({ type: 'PARAMS', params: jobParams });
         // Never fail silently: surface parse errors/warnings to the webview.
         if (errors.length > 0) bus.send({ type: 'PARSE_ERRORS', errors });
         // Fetch the Jenkins step catalogue in the background (non-blocking) so the
@@ -176,6 +185,8 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
     // the webview stays stuck on "running" (it sets that optimistically on click).
     const runDisposable = bus.on('RUN_BUILD', async (msg) => {
       const jobName = msg.jobName || config.jenkinsJobName;
+      // Branch: explicit request wins, else the configured default (multibranch).
+      const branch = msg.branch || config.jenkinsBranch || undefined;
       // Missing settings → ask the webview to open the configuration panel.
       const missing = this.missingBuildKeys(config);
       if (missing.length > 0) {
@@ -186,10 +197,10 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
       }
       try {
         const client = new JenkinsClient(config);
-        const queueUrl = await client.triggerBuild(jobName, msg.params);
+        const queueUrl = await client.triggerBuild(jobName, msg.params, branch);
         bus.send({ type: 'BUILD_STATUS', status: 'running' });
         const buildNumber = await client.getBuildNumber(queueUrl);
-        for await (const line of client.streamLogs(jobName, buildNumber)) {
+        for await (const line of client.streamLogs(jobName, buildNumber, branch)) {
           bus.send({ type: 'LOG_LINE', line, stream: 'stdout' });
         }
         bus.send({ type: 'BUILD_STATUS', status: 'success' });
@@ -288,6 +299,7 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
       jenkinsUrl: config.jenkinsUrl,
       jenkinsUser: config.jenkinsUser,
       jenkinsJobName: config.jenkinsJobName,
+      jenkinsBranch: config.jenkinsBranch,
       hasToken: !!config.jenkinsToken,
     };
   }
@@ -418,6 +430,7 @@ export class JenkinsNodeEditor implements vscode.CustomTextEditorProvider {
       jenkinsUser: config.get<string>('jenkinsUser', ''),
       jenkinsToken: await this.resolveToken(),
       jenkinsJobName: config.get<string>('jenkinsJobName', ''),
+      jenkinsBranch: config.get<string>('jenkinsBranch', ''),
       autoLayout: config.get<boolean>('autoLayout', true),
       syncDelay: config.get<number>('syncDelay', 300),
     };

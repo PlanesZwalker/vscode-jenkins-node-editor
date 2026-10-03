@@ -11,6 +11,7 @@ import type {
   BuildStatus,
   PublicConfig,
   ConfigKey,
+  JobParam,
 } from './types';
 
 // ─── Extension → Webview ────────────────────────────────────────────────────
@@ -46,7 +47,10 @@ export type ExtensionMessage =
   | { type: 'CONFIG'; config: PublicConfig }
 
   /** Réglages manquants : la webview doit ouvrir le panneau de configuration */
-  | { type: 'CONFIG_REQUIRED'; missing: ConfigKey[] };
+  | { type: 'CONFIG_REQUIRED'; missing: ConfigKey[] }
+
+  /** Paramètres de build du Jenkinsfile courant (formulaire Run Build) */
+  | { type: 'PARAMS'; params: JobParam[] };
 
 // ─── Webview → Extension ────────────────────────────────────────────────────
 
@@ -62,7 +66,6 @@ export type WebviewMessage =
 
   /** Déclencher un build Jenkins */
   | { type: 'RUN_BUILD'; jobName?: string; branch?: string; params?: Record<string, string> }
-
   /** Annuler le build en cours */
   | { type: 'ABORT_BUILD'; jobName?: string; buildNumber?: number }
 
