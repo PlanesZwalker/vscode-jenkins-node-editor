@@ -2,7 +2,7 @@
   "name": "vscode-jenkins-node-editor",
   "displayName": "Jenkins Node Editor",
   "description": "Visual node-based editor for Jenkinsfile pipelines",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "PlanesZwalker",
   "engines": {
     "vscode": "^1.85.0"
@@ -70,6 +70,26 @@
         "command": "jenkinsNodeEditor.setToken",
         "title": "Set Jenkins API Token (Secure)",
         "category": "Jenkins"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "jenkinsNodeEditor.openEditor",
+        "key": "ctrl+shift+j",
+        "mac": "cmd+shift+j",
+        "when": "resourceFilename =~ /[Jj]enkinsfile/ || resourceExtname =~ /\\.[Jj]enkinsfile/"
+      },
+      {
+        "command": "jenkinsNodeEditor.validate",
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
+        "when": "activeWebviewPanelId == jenkinsNodeEditor.editor"
+      },
+      {
+        "command": "jenkinsNodeEditor.runBuild",
+        "key": "ctrl+shift+b",
+        "mac": "cmd+shift+b",
+        "when": "activeWebviewPanelId == jenkinsNodeEditor.editor"
       }
     ],
     "menus": {
@@ -147,6 +167,8 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
     "@vitejs/plugin-react": "^4.2.0",
     "@vscode/test-electron": "^2.3.0",
     "@vscode/vsce": "^2.22.0",
