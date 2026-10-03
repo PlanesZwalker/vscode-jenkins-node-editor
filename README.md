@@ -10,7 +10,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Tests](https://img.shields.io/badge/tests-19%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-28%20passed-brightgreen)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
 
 </div>
@@ -549,8 +549,13 @@ npm run publish       # Publish to Marketplace (requires vsce login)
 
 ### Known Gotchas
 
-- **`nodeTypes` must be a module-level constant** ÔÇö declaring it inside a component causes React Flow to remount all nodes on every render
-- **Sync is gated on drag end** ÔÇö `onNodesChange` marks dirty only when `change.dragging === false`; `useGraphSync` skips while any node has `dragging: true`; `useVSCodeBridge` drops `DOC_CHANGED` messages during active drags- **`useTemporalStore` is a React hook** — `useGraphStore.temporal` (from `zundo`) is a plain `StoreApi`, not callable. It is wrapped with `useStore()` so components can reactively subscribe to `pastStates`/`futureStates`. Calling it directly as a function throws `TypeError: Xi is not a function`
+- **`nodeTypes` must be a module-level constant** — declaring it inside a component causes React Flow to remount all nodes on every render
+- **Sync is gated on drag end** — `onNodesChange` marks dirty only when `change.dragging === false`; `useGraphSync` skips while any node has `dragging: true`; `useVSCodeBridge` drops `DOC_CHANGED` messages during active drags
+- **`useTemporalStore` is a React hook** — `useGraphStore.temporal` (from `zundo`) is a plain `StoreApi`, not callable. It is wrapped with `useStore()` so components can reactively subscribe to `pastStates`/`futureStates`. Calling it directly as a function throws `TypeError: Xi is not a function`
+- **`detectMode()` must not be anchored to the file start** — real Jenkinsfiles often begin with comments, `@Library` annotations, or top-level Groovy constants (`IMAGE_MAP = [...]`) *before* `pipeline {`. The old `/^\s*pipeline\s*\{/` mis-classified those as `scripted`, so the graph rendered empty with no error. Detection now tokenizes (comment/string aware) and looks for a top-level `pipeline` block, with a line-anchored regex fallback.
+- **`buildStageNodes()` must recurse into nested `stages { }`** — Jenkins allows `stage('X') { stages { stage(...) } }` (sequential stages / matrix parents). Without recursion, only top-level stages were emitted (a 21-stage Jenkinsfile showed just 2).
+- **`extractLastKeyword()` must match args greedily** — stage names containing parentheses (`stage('Free RAM (staging)')`) broke the old non-greedy `[^)]*` matcher, leaving the whole expression as the keyword and silently dropping the stage.
+- **dagre must receive `contains` edges** — skipping parent→child (`contains`) edges in the auto-layout left every step/agent/post unconnected, so dagre dumped them all into rank 0 (y≈0) and the graph rendered as a cramped row at the top.
 ---
 
 ## Testing
@@ -561,41 +566,56 @@ npm run publish       # Publish to Marketplace (requires vsce login)
 npm run test:unit
 ```
 
-19 tests covering the parser and generator:
+28 tests covering the parser and generator:
 
 ```
-Ô£ô test/suite/parser.test.ts (19 tests)
+✓ test/suite/parser.test.ts (19 tests)
 
-  JenkinsfileParser ÔÇö simple.Jenkinsfile
-    Ô£ô parses without fatal errors
-    Ô£ô detects declarative mode
-    Ô£ô extracts 3 stage nodes (Build, Test, Deploy)
-    Ô£ô stage names match Jenkinsfile
-    Ô£ô extracts agent node (type: any)
-    Ô£ô extracts post nodes
-    Ô£ô all nodes have valid positions after layout
-    Ô£ô edges connect stages in sequence
+  JenkinsfileParser — simple.Jenkinsfile
+    ✓ parses without fatal errors
+    ✓ detects declarative mode
+    ✓ extracts 3 stage nodes (Build, Test, Deploy)
+    ✓ stage names match Jenkinsfile
+    ✓ extracts agent node (type: any)
+    ✓ extracts post nodes
+    ✓ all nodes have valid positions after layout
+    ✓ edges connect stages in sequence
 
-  JenkinsfileParser ÔÇö parallel.Jenkinsfile
-    Ô£ô parses without fatal errors
-    Ô£ô detects parallel node
-    Ô£ô parallel branches are present
+  JenkinsfileParser — parallel.Jenkinsfile
+    ✓ parses without fatal errors
+    ✓ detects parallel node
+    ✓ parallel branches are present
 
-  JenkinsfileParser ÔÇö error cases
-    Ô£ô empty string ÔåÆ error
-    Ô£ô unbalanced braces ÔåÆ error
-    Ô£ô partial input ÔåÆ partial graph
+  JenkinsfileParser — error cases
+    ✓ empty string → error
+    ✓ unbalanced braces → error
+    ✓ partial input → partial graph
 
   JenkinsfileGenerator
-    Ô£ô output contains 'pipeline' and 'stages'
-    Ô£ô output ends with '}'
-    Ô£ô indentation is divisible by 2
-    Ô£ô round-trip preserves stage count
-    Ô£ô generates agent block correctly
+    ✓ output contains 'pipeline' and 'stages'
+    ✓ output ends with '}'
+    ✓ indentation is divisible by 2
+    ✓ round-trip preserves stage count
+    ✓ generates agent block correctly
 
-Test Files  1 passed (1)
-     Tests  19 passed (19)
-  Duration  ~500ms
+✓ test/suite/real-world.test.ts (9 tests)
+
+  detectMode — leading content
+    ✓ declarative preceded by comments + top-level constants
+    ✓ declarative preceded by @Library
+    ✓ plain declarative
+    ✓ scripted still detected
+
+  JenkinsfileParser — leading constants + nested stages
+    ✓ detects declarative despite leading constants
+    ✓ extracts ALL stages, including nested ones
+    ✓ preserves stage names containing parentheses
+    ✓ emits an edge for every node (graph is connected, not empty)
+    ✓ auto-layout is hierarchical (contains edges keep steps under stages)
+
+Test Files  2 passed (2)
+     Tests  28 passed (28)
+  Duration  ~550ms
 ```
 
 ### Test Fixtures
@@ -605,6 +625,7 @@ Test Files  1 passed (1)
 | `simple.Jenkinsfile` | 3 stages (Build/Test/Deploy), `agent any`, post block |
 | `parallel.Jenkinsfile` | Parallel stages, `failFast` |
 | `complex.Jenkinsfile` | Environment vars, parameters, triggers, `when` conditions, Docker agent |
+| `leading-constants-nested.Jenkinsfile` | Regression: top-level Groovy constants before `pipeline {`, nested `stages { }`, stage names containing parentheses |
 
 ---
 
@@ -648,7 +669,7 @@ Apache 2.0 ┬® 2026 [PlanesZwalker](https://github.com/PlanesZwalker) ÔÇö s
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Tests](https://img.shields.io/badge/tests-19%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-28%20passed-brightgreen)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
 
 </div>
