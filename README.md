@@ -10,7 +10,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Tests](https://img.shields.io/badge/tests-42%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-53%20passed-brightgreen)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
 
 </div>
@@ -79,11 +79,11 @@ The UI is styled after **Blue Ocean**, Jenkins' own modern pipeline visualizatio
 | **Drag-safe Sync** | Sync is deliberately skipped while a node is being dragged — no mid-drag remounts |
 | **Undo / Redo** | Full undo/redo history for node and edge changes via `zundo` (Ôå® / Ôå¬ in toolbar) |
 | **Auto-layout** | Dagre-powered automatic node positioning on open |
-| **Declarative Parser** | Full support for `pipeline {}`, `stages`, `agent`, `when`, `environment`, `parameters`, `triggers`, `post` |
-| **Scripted Fallback** | Basic `node {}` scripted pipeline support |
+| **Declarative Parser** | Full support for `pipeline {}`, `stages` (incl. nested), `agent`, `when` (incl. `anyOf`/`allOf`/`not`), `environment`, `parameters`, `triggers`, `post` |
+| **Scripted Parser** | `node {}` scripted pipelines — stages and their steps, incl. stages nested in wrappers (`if`, `timestamps`, …) |
 | **Node Palette** | 20+ node types in collapsible groups ÔÇö drag onto canvas to add |
 | **Rich Node Inspector** | Full property editor for every node type: env vars, parameters, options, triggers, `when` conditions, post conditions, all step types |
-| **Validation** | Local syntax check + optional remote Jenkins API validation with inline node error markers |
+| **Validation** | Local syntax check + optional remote Jenkins API validation, with inline node error markers (errors are mapped to their stage by name/line) |
 | **CSRF-safe Builds** | Fetches a Jenkins CSRF crumb before every POST; crumb is cached and invalidated on 403 |
 | **Secure Token Storage** | Jenkins API token stored in VS Code's encrypted **SecretStorage**, never in `settings.json` |
 | **Build Trigger** | Trigger Jenkins builds directly from the editor |
@@ -580,12 +580,13 @@ npm run publish       # Publish to Marketplace (requires vsce login)
 npm run test:unit
 ```
 
-42 tests covering the parser, generator, and sync engine:
+53 tests covering the parser, generator, and sync engine:
 
 ```
 ✓ test/suite/parser.test.ts (19 tests)
 ✓ test/suite/real-world.test.ts (9 tests)
 ✓ test/suite/surgical-edit.test.ts (14 tests)
+✓ test/suite/scripted-when-mapping.test.ts (11 tests)
 
   JenkinsfileParser — simple.Jenkinsfile
     ✓ parses without fatal errors
@@ -685,7 +686,7 @@ Apache 2.0 ┬® 2026 [PlanesZwalker](https://github.com/PlanesZwalker) ÔÇö s
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Tests](https://img.shields.io/badge/tests-42%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-53%20passed-brightgreen)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
 
 </div>
