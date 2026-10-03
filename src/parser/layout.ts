@@ -43,11 +43,11 @@ export function applyDagreLayout(
   });
 
   edges.forEach(edge => {
-    // Pour dagre, on ignore les edges "contains" (parent→enfant) car ils briseraient le layout
-    // On ne connecte que les edges de séquence et parallèle
-    if (edge.type !== 'contains') {
-      g.setEdge(edge.source, edge.target);
-    }
+    // `contains` edges (pipeline→agent/stage, stage→step, post→step) are real
+    // parent→child relations and MUST be fed to dagre. Skipping them left every
+    // contained node (all steps, agent, post) unconnected, so dagre dumped them
+    // all into rank 0 (y≈0) and the graph rendered as a cramped row at the top.
+    g.setEdge(edge.source, edge.target);
   });
 
   dagre.layout(g);

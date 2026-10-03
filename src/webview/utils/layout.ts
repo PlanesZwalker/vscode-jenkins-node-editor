@@ -23,11 +23,9 @@ export function applyDagreLayout(nodes: Node[], edges: Edge[]): Node[] {
   });
 
   edges.forEach(edge => {
-    // Skip 'contains' edges so dagre doesn't use parent→child containment edges for ranking
-    const edgeType = (edge.data as Record<string, unknown> | undefined)?.['edgeType'];
-    if (edgeType !== 'contains') {
-      g.setEdge(edge.source, edge.target);
-    }
+    // Include `contains` edges (parent→child): they keep steps/agent/post under
+    // their owning stage instead of collapsing into a single top row.
+    g.setEdge(edge.source, edge.target);
   });
 
   dagre.layout(g);
