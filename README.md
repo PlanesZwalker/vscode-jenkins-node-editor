@@ -519,7 +519,7 @@ On first launch, any token already in `settings.json` is **automatically migrate
 ### Toolbar at a glance
 
 ```
-[ Ôè× Layout ]  [ Ôèí Fit ]  |  [ Ôå® Undo ]  [ Ôå¬ Redo ]  |  [ Ô£ô Validate ]  ┬À┬À┬À ÔûÂ Run Build  |  [ Ôÿ░ Logs ]  [ ? Help ]
+[ ⊠ Layout ]  [ ↓ Fit ]  |  [ ↩ Undo ]  [ ↪ Redo ]  |  [ ✓ Validate ]  ▶ Run Build  |  [ ◐ Logs ]  [ ? Help ]
 ```
 
 ### Build Logs

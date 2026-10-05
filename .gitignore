@@ -13,8 +13,12 @@ Thumbs.db
 # Editor
 .vscode/*.log
 *.code-workspace
+.history/
 
 # Environment
 .env
 .env.local
+
+# Test artifacts
+test/fixtures/.vscode/
 
