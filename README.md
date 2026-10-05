@@ -45,25 +45,25 @@ Jenkins Node Editor renders a `Jenkinsfile` as a **live, editable node graph** p
 The UI is styled after **Blue Ocean**, Jenkins' own modern pipeline visualization UI.
 
 ```
-ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ
-Ôöé                        VS Code Window                           Ôöé
-Ôöé                                                                 Ôöé
-Ôöé  ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ   ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ   Ôöé
-Ôöé  Ôöé   Text Editor (classic) ÔöéÔùäÔöÇÔöÇÔû║  Jenkins Node Editor       Ôöé   Ôöé
-Ôöé  Ôöé                         Ôöé   Ôöé  (Custom Editor Webview)   Ôöé   Ôöé
-Ôöé  Ôöé  pipeline {             Ôöé   Ôöé                            Ôöé   Ôöé
-Ôöé  Ôöé    agent any            Ôöé   Ôöé  ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ  ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ       Ôöé   Ôöé
-Ôöé  Ôöé    stages {             Ôöé   Ôöé  ÔöéAgentÔöéÔöÇÔû║Ôöé Build Ôöé       Ôöé   Ôöé
-Ôöé  Ôöé      stage('Build') {   Ôöé   Ôöé  ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ  ÔööÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÿ       Ôöé   Ôöé
-Ôöé  Ôöé        ...              Ôöé   Ôöé               Ôöé            Ôöé   Ôöé
-Ôöé  Ôöé      }                  Ôöé   Ôöé           ÔöîÔöÇÔöÇÔöÇÔû╝ÔöÇÔöÇÔöÇÔöÉ        Ôöé   Ôöé
-Ôöé  Ôöé    }                    Ôöé   Ôöé           Ôöé Test  Ôöé        Ôöé   Ôöé
-Ôöé  Ôöé  }                      Ôöé   Ôöé           ÔööÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÿ        Ôöé   Ôöé
-Ôöé  Ôöé                         Ôöé   Ôöé               Ôöé            Ôöé   Ôöé
-Ôöé  ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ   Ôöé           ÔöîÔöÇÔöÇÔöÇÔû╝ÔöÇÔöÇÔöÇÔöÉ        Ôöé   Ôöé
-Ôöé                                Ôöé           ÔöéDeploy Ôöé        Ôöé   Ôöé
-Ôöé                                ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ   Ôöé
-ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ
+┌─────────────────────────────────────────────────────────────────┐
+│                        VS Code Window                           │
+│                                                                 │
+│  ┌─────────────────────────┐   ┌───────────────────────────┐   │
+│  │   Text Editor (classic) │═──║  Jenkins Node Editor       │   │
+│  │                         │   │  (Custom Editor Webview)   │   │
+│  │  pipeline {             │   │                            │   │
+│  │    agent any            │   │  ┌─────┐  ┌───────┐       │   │
+│  │    stages {             │   │  │Agent│─║│ Build │       │   │
+│  │      stage('Build') {   │   │  └─────┘  └───Ôö¼───┘       │   │
+│  │        ...              │   │               │            │   │
+│  │      }                  │   │           ┌───╝───┐        │   │
+│  │    }                    │   │           │ Test  │        │   │
+│  │  }                      │   │           └───Ôö¼───┘        │   │
+│  │                         │   │               │            │   │
+│  └─────────────────────────┘   │           ┌───╝───┐        │   │
+│                                │           │Deploy │        │   │
+│                                └───────────┤───────┤────────┘   │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -341,81 +341,81 @@ Communication between the Extension Host and the Webview uses strongly-typed dis
 
 ```
 NodeCi/
-Ôö£ÔöÇÔöÇ ­ƒôä package.json                  # Extension manifest + scripts
-Ôö£ÔöÇÔöÇ ­ƒôä tsconfig.json                 # Extension host TypeScript config
-Ôö£ÔöÇÔöÇ ­ƒôä tsconfig.webview.json         # Webview TypeScript config
-Ôö£ÔöÇÔöÇ ­ƒôä vite.config.ts                # Webview build (Vite)
-Ôö£ÔöÇÔöÇ ­ƒôä esbuild.config.js             # Extension build (esbuild)
-Ôö£ÔöÇÔöÇ ­ƒôä vitest.config.ts              # Unit test config
-Ôöé
-Ôö£ÔöÇÔöÇ ­ƒôü media/
-Ôöé   ÔööÔöÇÔöÇ icon.png                    # Extension icon
-Ôöé
-Ôö£ÔöÇÔöÇ ­ƒôü src/
-Ôöé   Ôö£ÔöÇÔöÇ ­ƒôü extension/               # Extension host (Node.js runtime)
-Ôöé   Ôöé   Ôö£ÔöÇÔöÇ extension.ts            # Activate / deactivate + commands (incl. setToken)
-Ôöé   Ôöé   Ôö£ÔöÇÔöÇ JenkinsNodeEditor.ts    # CustomTextEditorProvider ÔÇö SecretStorage, syncDepth
-Ôöé   Ôöé   Ôö£ÔöÇÔöÇ MessageBus.ts           # Typed pub/sub bridge
-Ôöé   Ôöé   Ôö£ÔöÇÔöÇ JenkinsValidator.ts     # Local + REST validation
-Ôöé   Ôöé   Ôö£ÔöÇÔöÇ JenkinsClient.ts        # Jenkins REST API + CSRF crumb cache
-Ôöé   Ôöé   Ôö£ÔöÇÔöÇ PositionStore.ts        # Persistent node positions
-Ôöé   Ôöé   ÔööÔöÇÔöÇ logger.ts               # VS Code output channel
-Ôöé   Ôöé
-Ôöé   Ôö£ÔöÇÔöÇ ­ƒôü parser/                  # Jenkinsfile Ôåö GraphModel
-Ôöé   Ôöé   Ôö£ÔöÇÔöÇ JenkinsfileParser.ts    # Jenkinsfile ÔåÆ GraphModel
-Ôöé   Ôöé   Ôö£ÔöÇÔöÇ JenkinsfileGenerator.ts # GraphModel ÔåÆ Jenkinsfile
-Ôöé   Ôöé   ÔööÔöÇÔöÇ layout.ts               # Dagre layout (extension-side)
-Ôöé   Ôöé
-Ôöé   Ôö£ÔöÇÔöÇ ­ƒôü shared/                  # Zero-dependency shared types
-Ôöé   Ôöé   Ôö£ÔöÇÔöÇ types.ts               # All domain types
-Ôöé   Ôöé   ÔööÔöÇÔöÇ messages.ts            # Message protocol discriminated unions
-Ôöé   Ôöé
-Ôöé   ÔööÔöÇÔöÇ ­ƒôü webview/                 # React UI (browser runtime)
-Ôöé       Ôö£ÔöÇÔöÇ main.tsx               # React entry point + ErrorBoundary
-Ôöé       Ôö£ÔöÇÔöÇ App.tsx                # Root layout component
-Ôöé       Ôö£ÔöÇÔöÇ ­ƒôü components/
-Ôöé       Ôöé   Ôö£ÔöÇÔöÇ NodeCanvas.tsx     # React Flow canvas + drag/drop + welcome state
-Ôöé       Ôöé   Ôö£ÔöÇÔöÇ NodePalette.tsx    # 20+ draggable node types in collapsible groups
-Ôöé       Ôöé   Ôö£ÔöÇÔöÇ NodeInspector.tsx  # Full property editor (env vars, when, params, optionsÔÇª)
-Ôöé       Ôöé   Ôö£ÔöÇÔöÇ Toolbar.tsx        # Undo/Redo + Validate/Run/Abort + Help panel
-Ôöé       Ôöé   ÔööÔöÇÔöÇ LogPanel.tsx       # Streaming build log display
-Ôöé       Ôö£ÔöÇÔöÇ ­ƒôü nodes/
-Ôöé       Ôöé   Ôö£ÔöÇÔöÇ BaseNode.tsx       # Blue Ocean card chrome (glow on select, status dot)
-Ôöé       Ôöé   Ôö£ÔöÇÔöÇ StageNode.tsx      # Stage node ÔÇö when badge, failFast indicator
-Ôöé       Ôöé   Ôö£ÔöÇÔöÇ StepNode.tsx       # Step node ÔÇö type label + script preview
-Ôöé       Ôöé   Ôö£ÔöÇÔöÇ AgentNode.tsx      # Agent node ÔÇö type + detail
-Ôöé       Ôöé   Ôö£ÔöÇÔöÇ ParallelNode.tsx   # Parallel node ÔÇö branch count
-Ôöé       Ôöé   Ôö£ÔöÇÔöÇ PostNode.tsx       # Post node ÔÇö condition badge
-Ôöé       Ôöé   ÔööÔöÇÔöÇ index.ts           # Module-level nodeTypes map (avoids remount bug)
-Ôöé       Ôö£ÔöÇÔöÇ ­ƒôü hooks/
-Ôöé       Ôöé   Ôö£ÔöÇÔöÇ useVSCodeBridge.ts # postMessage bridge + drag guard on DOC_CHANGED
-Ôöé       Ôöé   Ôö£ÔöÇÔöÇ useGraphSync.ts    # Drag-safe debounced sync (skips while dragging)
-Ôöé       Ôöé   ÔööÔöÇÔöÇ useJenkinsAPI.ts   # Validate / run / abort hooks
-Ôöé       Ôö£ÔöÇÔöÇ ­ƒôü store/
-Ôöé       Ôöé   ÔööÔöÇÔöÇ graphStore.ts      # Zustand + immer + zundo (undo/redo, 50-state limit)
-Ôöé       Ôö£ÔöÇÔöÇ ­ƒôü utils/
-Ôöé       Ôöé   Ôö£ÔöÇÔöÇ layout.ts          # Dagre auto-layout (webview-side)
-Ôöé       Ôöé   ÔööÔöÇÔöÇ theme.ts           # VS Code theme ÔåÆ CSS vars
-Ôöé       ÔööÔöÇÔöÇ ­ƒôü styles/
-Ôöé           ÔööÔöÇÔöÇ globals.css        # Blue Ocean CSS variables + utility classes
-Ôöé
-Ôö£ÔöÇÔöÇ ­ƒôü test/
-Ôöé   Ôö£ÔöÇÔöÇ runTests.js                # E2E test runner
-Ôöé   Ôö£ÔöÇÔöÇ ­ƒôü fixtures/
-Ôöé   Ôöé   Ôö£ÔöÇÔöÇ simple.Jenkinsfile     # 3-stage declarative pipeline
-Ôöé   Ôöé   Ôö£ÔöÇÔöÇ parallel.Jenkinsfile   # Parallel stages example
-Ôöé   Ôöé   ÔööÔöÇÔöÇ complex.Jenkinsfile    # Full-featured pipeline
-Ôöé   ÔööÔöÇÔöÇ ­ƒôü suite/
-Ôöé       ÔööÔöÇÔöÇ parser.test.ts        # 19 Vitest unit tests
-Ôöé
-Ôö£ÔöÇÔöÇ ­ƒôü docs/
-Ôöé   Ôö£ÔöÇÔöÇ PHASE1.md ÔÇö PHASE6.md     # Phase-by-phase build notes
-Ôöé
-ÔööÔöÇÔöÇ ­ƒôü dist/                        # Build output (git-ignored)
-    Ôö£ÔöÇÔöÇ extension.js               # Bundled extension host
-    ÔööÔöÇÔöÇ ­ƒôü webview/
-        Ôö£ÔöÇÔöÇ main.js               # Bundled React app
-        ÔööÔöÇÔöÇ main.css              # Bundled styles
+├── ­ƒôä package.json                  # Extension manifest + scripts
+├── ­ƒôä tsconfig.json                 # Extension host TypeScript config
+├── ­ƒôä tsconfig.webview.json         # Webview TypeScript config
+├── ­ƒôä vite.config.ts                # Webview build (Vite)
+├── ­ƒôä esbuild.config.js             # Extension build (esbuild)
+├── ­ƒôä vitest.config.ts              # Unit test config
+│
+├── ­ƒôü media/
+│   └── icon.png                    # Extension icon
+│
+├── ­ƒôü src/
+│   ├── ­ƒôü extension/               # Extension host (Node.js runtime)
+│   │   ├── extension.ts            # Activate / deactivate + commands (incl. setToken)
+│   │   ├── JenkinsNodeEditor.ts    # CustomTextEditorProvider ÔÇö SecretStorage, syncDepth
+│   │   ├── MessageBus.ts           # Typed pub/sub bridge
+│   │   ├── JenkinsValidator.ts     # Local + REST validation
+│   │   ├── JenkinsClient.ts        # Jenkins REST API + CSRF crumb cache
+│   │   ├── PositionStore.ts        # Persistent node positions
+│   │   └── logger.ts               # VS Code output channel
+│   │
+│   ├── ­ƒôü parser/                  # Jenkinsfile Ôåö GraphModel
+│   │   ├── JenkinsfileParser.ts    # Jenkinsfile ÔåÆ GraphModel
+│   │   ├── JenkinsfileGenerator.ts # GraphModel ÔåÆ Jenkinsfile
+│   │   └── layout.ts               # Dagre layout (extension-side)
+│   │
+│   ├── ­ƒôü shared/                  # Zero-dependency shared types
+│   │   ├── types.ts               # All domain types
+│   │   └── messages.ts            # Message protocol discriminated unions
+│   │
+│   └── ­ƒôü webview/                 # React UI (browser runtime)
+│       ├── main.tsx               # React entry point + ErrorBoundary
+│       ├── App.tsx                # Root layout component
+│       ├── ­ƒôü components/
+│       │   ├── NodeCanvas.tsx     # React Flow canvas + drag/drop + welcome state
+│       │   ├── NodePalette.tsx    # 20+ draggable node types in collapsible groups
+│       │   ├── NodeInspector.tsx  # Full property editor (env vars, when, params, optionsÔÇª)
+│       │   ├── Toolbar.tsx        # Undo/Redo + Validate/Run/Abort + Help panel
+│       │   └── LogPanel.tsx       # Streaming build log display
+│       ├── ­ƒôü nodes/
+│       │   ├── BaseNode.tsx       # Blue Ocean card chrome (glow on select, status dot)
+│       │   ├── StageNode.tsx      # Stage node ÔÇö when badge, failFast indicator
+│       │   ├── StepNode.tsx       # Step node ÔÇö type label + script preview
+│       │   ├── AgentNode.tsx      # Agent node ÔÇö type + detail
+│       │   ├── ParallelNode.tsx   # Parallel node ÔÇö branch count
+│       │   ├── PostNode.tsx       # Post node ÔÇö condition badge
+│       │   └── index.ts           # Module-level nodeTypes map (avoids remount bug)
+│       ├── ­ƒôü hooks/
+│       │   ├── useVSCodeBridge.ts # postMessage bridge + drag guard on DOC_CHANGED
+│       │   ├── useGraphSync.ts    # Drag-safe debounced sync (skips while dragging)
+│       │   └── useJenkinsAPI.ts   # Validate / run / abort hooks
+│       ├── ­ƒôü store/
+│       │   └── graphStore.ts      # Zustand + immer + zundo (undo/redo, 50-state limit)
+│       ├── ­ƒôü utils/
+│       │   ├── layout.ts          # Dagre auto-layout (webview-side)
+│       │   └── theme.ts           # VS Code theme ÔåÆ CSS vars
+│       └── ­ƒôü styles/
+│           └── globals.css        # Blue Ocean CSS variables + utility classes
+│
+├── ­ƒôü test/
+│   ├── runTests.js                # E2E test runner
+│   ├── ­ƒôü fixtures/
+│   │   ├── simple.Jenkinsfile     # 3-stage declarative pipeline
+│   │   ├── parallel.Jenkinsfile   # Parallel stages example
+│   │   └── complex.Jenkinsfile    # Full-featured pipeline
+│   └── ­ƒôü suite/
+│       └── parser.test.ts        # 19 Vitest unit tests
+│
+├── ­ƒôü docs/
+│   ├── PHASE1.md ÔÇö PHASE6.md     # Phase-by-phase build notes
+│
+└── ­ƒôü dist/                        # Build output (git-ignored)
+    ├── extension.js               # Bundled extension host
+    └── ­ƒôü webview/
+        ├── main.js               # Bundled React app
+        └── main.css              # Bundled styles
 ```
 
 ---
