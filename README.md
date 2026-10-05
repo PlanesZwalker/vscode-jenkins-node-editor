@@ -4,7 +4,7 @@
 
 <img src="media/icon.png" alt="Jenkins Node Editor icon" width="128" height="128" />
 
-> **A VS Code extension that turns any `Jenkinsfile` into an interactive visual node graph ÔÇö edit it, run builds, and stream logs, all without leaving your editor.**
+> **A VS Code extension that turns any `Jenkinsfile` into an interactive visual node graph — edit it, run builds, and stream logs, all without leaving your editor.**
 
 ![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.85.0-007ACC?logo=visual-studio-code&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
@@ -18,7 +18,6 @@
 ---
 
 ## Table of Contents
-
 - [Overview](#overview)
 - [Features](#features)
 - [Architecture](#architecture)
@@ -40,30 +39,31 @@
 
 ## Overview
 
-Jenkins Node Editor renders a `Jenkinsfile` as a **live, editable node graph** powered by [React Flow](https://reactflow.dev/). Changes made in the graph are immediately reflected in the source file, and changes made in the text editor instantly update the graph ÔÇö a true **bidirectional sync**.
+Jenkins Node Editor renders a `Jenkinsfile` as a **live, editable node graph** powered by [React Flow](https://reactflow.dev/). Changes made in the graph are immediately reflected in the source file, and changes made in the text editor instantly update the graph — a true **bidirectional sync**.
 
 The UI is styled after **Blue Ocean**, Jenkins' own modern pipeline visualization UI.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        VS Code Window                           │
-│                                                                 │
-│  ┌─────────────────────────┐   ┌───────────────────────────┐   │
-│  │   Text Editor (classic) │═──║  Jenkins Node Editor       │   │
-│  │                         │   │  (Custom Editor Webview)   │   │
-│  │  pipeline {             │   │                            │   │
-│  │    agent any            │   │  ┌─────┐  ┌───────┐       │   │
-│  │    stages {             │   │  │Agent│─║│ Build │       │   │
-│  │      stage('Build') {   │   │  └─────┘  └───Ôö¼───┘       │   │
-│  │        ...              │   │               │            │   │
-│  │      }                  │   │           ┌───╝───┐        │   │
-│  │    }                    │   │           │ Test  │        │   │
-│  │  }                      │   │           └───Ôö¼───┘        │   │
-│  │                         │   │               │            │   │
-│  └─────────────────────────┘   │           ┌───╝───┐        │   │
-│                                │           │Deploy │        │   │
-│                                └───────────┤───────┤────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                        VS Code Window                                        │
+│                                                                              │
+│  ┌─────────────────────────────┐   ┌─────────────────────────────────────┐   │
+│  │                             │   │  Jenkins Node Editor                │   │
+│  │   Text Editor (classic)     │   │  (Custom Editor Webview)            │   │
+│  │                             │   │                                     │   │
+│  │  pipeline {                 │   │  ┌─────┐   ┌─────┐                 │   │
+│  │    agent any                │   │  │Agent│──▶│Build│                 │   │
+│  │    stages {                 │   │  └─────┘   └─────┘                 │   │
+│  │      stage('Build') {       │   │                │                   │   │
+│  │        ...                  │   │           ┌────▼────┐              │   │
+│  │      }                      │   │           │  Test   │              │   │
+│  │    }                        │   │           └────┬────┘              │   │
+│  │  }                          │   │                │                   │   │
+│  │                             │   │           ┌────▼────┐              │   │
+│  │                             │   │           │ Deploy  │              │   │
+│  │                             │   │           └─────────┘              │   │
+│  └─────────────────────────────┘   └─────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -72,19 +72,19 @@ The UI is styled after **Blue Ocean**, Jenkins' own modern pipeline visualizatio
 
 | Feature | Description |
 |---------|-------------|
-| **Visual Graph Editor** | Drag, drop, and connect pipeline nodes on a Blue Ocean–styled canvas |
+| **Visual Graph Editor** | Drag, drop, and connect pipeline nodes on a Blue Ocean-styled canvas |
 | **Bidirectional Sync** | Edit text → graph updates; edit graph → text updates |
 | **Surgical Sync** | Graph→file writes are minimal-diff: only the changed region is rewritten; everything else is preserved byte-for-byte |
 | **Destructive-edit Guard** | If a write would delete >50% of a large file (a lossy regeneration), it is refused with a warning instead of corrupting the file |
 | **Drag-safe Sync** | Sync is deliberately skipped while a node is being dragged — no mid-drag remounts |
-| **Undo / Redo** | Full undo/redo history for node and edge changes via `zundo` (Ôå® / Ôå¬ in toolbar) |
+| **Undo / Redo** | Full undo/redo history for node and edge changes via `zundo` (↩ / ↪ in toolbar) |
 | **Auto-layout** | Dagre-powered automatic node positioning on open |
 | **Declarative Parser** | Full support for `pipeline {}`, `stages` (incl. nested), `agent`, `when` (incl. `anyOf`/`allOf`/`not`), `environment`, `parameters`, `triggers`, `post` |
 | **Scripted Parser** | `node {}` scripted pipelines — stages and their steps, incl. stages nested in wrappers (`if`, `timestamps`, …) |
-| **Node Palette** | 20+ node types in collapsible groups ÔÇö drag onto canvas to add |
+| **Node Palette** | 20+ node types in collapsible groups — drag onto canvas to add |
 | **Rich Node Inspector** | Full property editor for every node type: env vars, parameters, options, triggers, `when` conditions, post conditions, all step types |
 | **Validation** | Local syntax check + optional remote Jenkins API validation, with inline node error markers (errors are mapped to their stage by name/line) |
-| **Guided Setup** | If “Run Build” fails because Jenkins isn't configured, a **configuration panel opens automatically** so you can fill in URL / user / job / branch / token in place — no need to hunt through `settings.json` |
+| **Guided Setup** | If "Run Build" fails because Jenkins isn't configured, a **configuration panel opens automatically** so you can fill in URL / user / job / branch / token in place — no need to hunt through `settings.json` |
 | **Build Parameters** | The `parameters {}` block of the Jenkinsfile is parsed and rendered as a form (text / `booleanParam` / `choice`); values are sent with **Run Build**, so you can set `FORCE_BUILD`, `BUILD_WORKERS`, etc. |
 | **Raw Construct Support** | Constructs the visual model can't decompose — `script { … }`, multi-line `sh '''…'''` heredocs, `checkout([…])`, `withCredentials([…])` — become real nodes holding their **exact source text**, editable in the inspector and re-emitted verbatim (no reformatting). |
 | **Lossless Surroundings** | Top-level Groovy helpers/constants around `pipeline { }` are preserved verbatim, so a regeneration never deletes them. |
@@ -118,8 +118,8 @@ graph TB
         EXT["extension.ts\nActivate / Commands"]
         EDITOR["JenkinsNodeEditor\nCustomTextEditorProvider"]
         BUS["MessageBus\nTyped pub/sub bridge"]
-        PARSER["JenkinsfileParser\nJenkinsfile ÔåÆ GraphModel"]
-        GEN["JenkinsfileGenerator\nGraphModel ÔåÆ Jenkinsfile"]
+        PARSER["JenkinsfileParser\nJenkinsfile → GraphModel"]
+        GEN["JenkinsfileGenerator\nGraphModel → Jenkinsfile"]
         VALIDATOR["JenkinsValidator\nLocal + Remote validation"]
         CLIENT["JenkinsClient\nREST API + CSRF crumb"]
         POSSTORE["PositionStore\nPersist node positions"]
@@ -182,8 +182,8 @@ sequenceDiagram
     participant UI as React UI
 
     VSCode->>JNE: resolveCustomTextEditor(document)
-    JNE->>JNE: getWebviewHtml() ÔåÆ inject nonce + CSP
-    JNE->>Secrets: resolveToken() ÔÇö migrate legacy settings token if present
+    JNE->>JNE: getWebviewHtml() → inject nonce + CSP
+    JNE->>Secrets: resolveToken() — migrate legacy settings token if present
     JNE->>Bus: create MessageBus
     UI->>Bus: READY
     Bus->>JNE: on('READY')
@@ -196,7 +196,7 @@ sequenceDiagram
     Store->>UI: re-render
 ```
 
-### Editing the Graph ÔåÆ File Sync
+### Editing the Graph → File Sync
 
 ```mermaid
 sequenceDiagram
@@ -212,7 +212,7 @@ sequenceDiagram
     User->>RF: drag END / edit node / connect edge
     RF->>Store: onNodesChange (dragging=false) / onEdgesChange / onConnect
     Store->>Store: isDirty = true
-    Note over Sync: isDragging check ÔÇö skips sync while any node.dragging=true
+    Note over Sync: isDragging check — skips sync while any node.dragging=true
     Sync->>Bus: GRAPH_CHANGED { graph } (after 300ms debounce)
     Bus->>JNE: on('GRAPH_CHANGED')
     JNE->>JNE: syncDepth++ (depth counter, not boolean flag)
@@ -222,7 +222,7 @@ sequenceDiagram
     JNE->>JNE: syncDepth-- (in finally)
 ```
 
-### Text Edit ÔåÆ Graph Sync
+### Text Edit → Graph Sync
 
 ```mermaid
 sequenceDiagram
@@ -236,13 +236,13 @@ sequenceDiagram
 
     User->>Doc: type in text editor
     Doc->>JNE: onDidChangeTextDocument
-    JNE->>JNE: if syncDepth > 0 ÔåÆ skip (anti-loop)
+    JNE->>JNE: if syncDepth > 0 → skip (anti-loop)
     JNE->>Parser: parse(document.getText())
     Parser-->>JNE: { graph }
     JNE->>JNE: mergePositions(graph, saved)
     JNE->>Bus: send DOC_CHANGED { graph }
     Bus->>Bridge: message event
-    Bridge->>Bridge: if any node.dragging ÔåÆ drop message (drag guard)
+    Bridge->>Bridge: if any node.dragging → drop message (drag guard)
     Bridge->>Store: setNodes / setEdges
 ```
 
@@ -255,35 +255,35 @@ The graph model uses 5 rendered node kinds and a rich property inspector for eac
 ```mermaid
 graph LR
     subgraph "Pipeline Structure"
-        P([­ƒöÁ pipeline]) --> A([­ƒƒó agent])
-        P --> S1([­ƒƒú stage: Build])
-        P --> S2([­ƒƒú stage: Test])
-        P --> S3([­ƒƒú stage: Deploy])
-        P --> POST([­ƒö┤ post])
+        P([📦 pipeline]) --> A([🤖 agent])
+        P --> S1([📋 stage: Build])
+        P --> S2([📋 stage: Test])
+        P --> S3([📋 stage: Deploy])
+        P --> POST([📤 post])
     end
 
     subgraph "Stage Children"
-        S1 --> ST1([­ƒöÁ step: sh])
-        S1 --> ST2([­ƒöÁ step: archiveArtifacts])
-        S2 --> ST3([­ƒöÁ step: sh])
-        S2 --> ST4([­ƒöÁ step: junit])
+        S1 --> ST1([⚡ step: sh])
+        S1 --> ST2([⚡ step: archiveArtifacts])
+        S2 --> ST3([⚡ step: sh])
+        S2 --> ST4([⚡ step: junit])
     end
 
     subgraph "Parallel Stage"
-        S3 --> PAR([­ƒƒí parallel])
-        PAR --> B1([­ƒƒú stage: Branch A])
-        PAR --> B2([­ƒƒú stage: Branch B])
+        S3 --> PAR([🔀 parallel])
+        PAR --> B1([📋 stage: Branch A])
+        PAR --> B2([📋 stage: Branch B])
     end
 ```
 
 | Kind | Color | Description | Inspector sections |
 |------|-------|-------------|-------------------|
-| `pipeline` | ­ƒöÁ Blue | Root container node | Global agent, environment vars, parameters, options, triggers |
-| `agent` | ­ƒ®Á Cyan | Execution agent | Type (any/none/label/docker/dockerfile) + type-specific fields |
-| `stage` | ­ƒƒú Purple | Named pipeline stage | Name, agent override, `when` condition, `failFast`, env vars |
-| `step` | ­ƒöÁ Teal | Individual build step | Type selector + all step-specific fields (sh/echo/git/checkout/archiveArtifacts/junit/timeout/retry/script/withCredentials/input/custom) |
-| `parallel` | ­ƒƒí Amber | Parallel execution group | `failFast` toggle |
-| `post` | ­ƒö┤ Red | Post-build condition | Condition (always/success/failure/unstable/changed/fixed/regression/aborted/cleanup) |
+| `pipeline` | 🔵 Blue | Root container node | Global agent, environment vars, parameters, options, triggers |
+| `agent` | 🟢 Cyan | Execution agent | Type (any/none/label/docker/dockerfile) + type-specific fields |
+| `stage` | 🟣 Purple | Named pipeline stage | Name, agent override, `when` condition, `failFast`, env vars |
+| `step` | 🟠 Teal | Individual build step | Type selector + all step-specific fields (sh/echo/git/checkout/archiveArtifacts/junit/timeout/retry/script/withCredentials/input/custom) |
+| `parallel` | 🟡 Amber | Parallel execution group | `failFast` toggle |
+| `post` | 🔴 Red | Post-build condition | Condition (always/success/failure/unstable/changed/fixed/regression/aborted/cleanup) |
 
 ### Supported Step Types
 
@@ -292,19 +292,19 @@ graph LR
 | `sh` | `sh 'command'` |
 | `bat` | `bat 'command'` |
 | `echo` | `echo 'message'` |
-| `git` | `git url: 'ÔÇª', branch: 'ÔÇª'` |
+| `git` | `git url: '…', branch: '…'` |
 | `checkout` | `checkout scm` |
 | `archiveArtifacts` | `archiveArtifacts artifacts: '**/*.jar'` |
 | `junit` | `junit '**/surefire-reports/*.xml'` |
-| `withCredentials` | `withCredentials([usernamePassword(ÔÇª)]) { ÔÇª }` |
-| `timeout` | `timeout(time: 10, unit: 'MINUTES') { ÔÇª }` |
-| `retry` | `retry(3) { ÔÇª }` |
-| `input` | `input message: 'ÔÇª', ok: 'ÔÇª'` |
+| `withCredentials` | `withCredentials([usernamePassword(…)]) { … }` |
+| `timeout` | `timeout(time: 10, unit: 'MINUTES') { … }` |
+| `retry` | `retry(3) { … }` |
+| `input` | `input message: '…', ok: '…'` |
 | `sleep` | `sleep time: 5, unit: 'SECONDS'` |
-| `stash` / `unstash` | `stash name: 'ÔÇª' ` / `unstash 'ÔÇª'` |
-| `slackSend` | `slackSend channel: 'ÔÇª', message: 'ÔÇª'` |
+| `stash` / `unstash` | `stash name: '…' ` / `unstash '…'` |
+| `slackSend` | `slackSend channel: '…', message: '…'` |
 | `script` | Raw Groovy block |
-| `custom` | Any other step ÔÇö raw Groovy preserved |
+| `custom` | Any other step — raw Groovy preserved |
 
 ---
 
@@ -312,7 +312,7 @@ graph LR
 
 Communication between the Extension Host and the Webview uses strongly-typed discriminated unions defined in `src/shared/messages.ts`.
 
-### Extension ÔåÆ Webview
+### Extension → Webview
 
 | Message Type | Payload |
 |---|---|
@@ -324,11 +324,11 @@ Communication between the Extension Host and the Webview uses strongly-typed dis
 | `BUILD_STATUS` | `{ status: BuildStatus }` |
 | `THEME_CHANGED` | `{ theme: VSCodeTheme }` |
 
-### Webview ÔåÆ Extension
+### Webview → Extension
 
 | Message Type | Payload |
 |---|---|
-| `READY` | _(none)_ ÔÇö webview mounted |
+| `READY` | _(none)_ — webview mounted |
 | `GRAPH_CHANGED` | `{ graph: GraphModel }` |
 | `VALIDATE_REQUEST` | `{ content?: string }` |
 | `RUN_BUILD` | `{ jobName?: string, branch?: string, params?: Record<string,string> }` |
@@ -340,82 +340,82 @@ Communication between the Extension Host and the Webview uses strongly-typed dis
 ## Project Structure
 
 ```
-NodeCi/
-├── ­ƒôä package.json                  # Extension manifest + scripts
-├── ­ƒôä tsconfig.json                 # Extension host TypeScript config
-├── ­ƒôä tsconfig.webview.json         # Webview TypeScript config
-├── ­ƒôä vite.config.ts                # Webview build (Vite)
-├── ­ƒôä esbuild.config.js             # Extension build (esbuild)
-├── ­ƒôä vitest.config.ts              # Unit test config
+vscode-jenkins-node-editor/
+├── package.json                  # Extension manifest + scripts
+├── tsconfig.json                 # Extension host TypeScript config
+├── tsconfig.webview.json         # Webview TypeScript config
+├── vite.config.ts                # Webview build (Vite)
+├── esbuild.config.js             # Extension build (esbuild)
+├── vitest.config.ts              # Unit test config
 │
-├── ­ƒôü media/
-│   └── icon.png                    # Extension icon
+├── media/
+│   └── icon.png                  # Extension icon
 │
-├── ­ƒôü src/
-│   ├── ­ƒôü extension/               # Extension host (Node.js runtime)
-│   │   ├── extension.ts            # Activate / deactivate + commands (incl. setToken)
-│   │   ├── JenkinsNodeEditor.ts    # CustomTextEditorProvider ÔÇö SecretStorage, syncDepth
-│   │   ├── MessageBus.ts           # Typed pub/sub bridge
-│   │   ├── JenkinsValidator.ts     # Local + REST validation
-│   │   ├── JenkinsClient.ts        # Jenkins REST API + CSRF crumb cache
-│   │   ├── PositionStore.ts        # Persistent node positions
-│   │   └── logger.ts               # VS Code output channel
+├── src/
+│   ├── extension/               # Extension host (Node.js runtime)
+│   │   ├── extension.ts          # Activate / deactivate + commands (incl. setToken)
+│   │   ├── JenkinsNodeEditor.ts  # CustomTextEditorProvider — SecretStorage, syncDepth
+│   │   ├── MessageBus.ts         # Typed pub/sub bridge
+│   │   ├── JenkinsValidator.ts   # Local + REST validation
+│   │   ├── JenkinsClient.ts      # Jenkins REST API + CSRF crumb cache
+│   │   ├── PositionStore.ts      # Persistent node positions
+│   │   └── logger.ts             # VS Code output channel
 │   │
-│   ├── ­ƒôü parser/                  # Jenkinsfile Ôåö GraphModel
-│   │   ├── JenkinsfileParser.ts    # Jenkinsfile ÔåÆ GraphModel
-│   │   ├── JenkinsfileGenerator.ts # GraphModel ÔåÆ Jenkinsfile
-│   │   └── layout.ts               # Dagre layout (extension-side)
+│   ├── parser/                   # Jenkinsfile → GraphModel
+│   │   ├── JenkinsfileParser.ts  # Jenkinsfile → GraphModel
+│   │   ├── JenkinsfileGenerator.ts # GraphModel → Jenkinsfile
+│   │   └── layout.ts             # Dagre layout (extension-side)
 │   │
-│   ├── ­ƒôü shared/                  # Zero-dependency shared types
+│   ├── shared/                   # Zero-dependency shared types
 │   │   ├── types.ts               # All domain types
 │   │   └── messages.ts            # Message protocol discriminated unions
 │   │
-│   └── ­ƒôü webview/                 # React UI (browser runtime)
-│       ├── main.tsx               # React entry point + ErrorBoundary
-│       ├── App.tsx                # Root layout component
-│       ├── ­ƒôü components/
-│       │   ├── NodeCanvas.tsx     # React Flow canvas + drag/drop + welcome state
-│       │   ├── NodePalette.tsx    # 20+ draggable node types in collapsible groups
-│       │   ├── NodeInspector.tsx  # Full property editor (env vars, when, params, optionsÔÇª)
-│       │   ├── Toolbar.tsx        # Undo/Redo + Validate/Run/Abort + Help panel
-│       │   └── LogPanel.tsx       # Streaming build log display
-│       ├── ­ƒôü nodes/
-│       │   ├── BaseNode.tsx       # Blue Ocean card chrome (glow on select, status dot)
-│       │   ├── StageNode.tsx      # Stage node ÔÇö when badge, failFast indicator
-│       │   ├── StepNode.tsx       # Step node ÔÇö type label + script preview
-│       │   ├── AgentNode.tsx      # Agent node ÔÇö type + detail
-│       │   ├── ParallelNode.tsx   # Parallel node ÔÇö branch count
-│       │   ├── PostNode.tsx       # Post node ÔÇö condition badge
-│       │   └── index.ts           # Module-level nodeTypes map (avoids remount bug)
-│       ├── ­ƒôü hooks/
+│   └── webview/                  # React UI (browser runtime)
+│       ├── main.tsx              # React entry point + ErrorBoundary
+│       ├── App.tsx               # Root layout component
+│       ├── components/
+│       │   ├── NodeCanvas.tsx    # React Flow canvas + drag/drop + welcome state
+│       │   ├── NodePalette.tsx   # 20+ draggable node types in collapsible groups
+│       │   ├── NodeInspector.tsx # Full property editor (env vars, when, params, options…)
+│       │   ├── Toolbar.tsx       # Undo/Redo + Validate/Run/Abort + Help panel
+│       │   └── LogPanel.tsx      # Streaming build log display
+│       ├── nodes/
+│       │   ├── BaseNode.tsx      # Blue Ocean card chrome (glow on select, status dot)
+│       │   ├── StageNode.tsx     # Stage node — when badge, failFast indicator
+│       │   ├── StepNode.tsx      # Step node — type label + script preview
+│       │   ├── AgentNode.tsx     # Agent node — type + detail
+│       │   ├── ParallelNode.tsx  # Parallel node — branch count
+│       │   ├── PostNode.tsx      # Post node — condition badge
+│       │   └── index.ts          # Module-level nodeTypes map (avoids remount bug)
+│       ├── hooks/
 │       │   ├── useVSCodeBridge.ts # postMessage bridge + drag guard on DOC_CHANGED
 │       │   ├── useGraphSync.ts    # Drag-safe debounced sync (skips while dragging)
 │       │   └── useJenkinsAPI.ts   # Validate / run / abort hooks
-│       ├── ­ƒôü store/
+│       ├── store/
 │       │   └── graphStore.ts      # Zustand + immer + zundo (undo/redo, 50-state limit)
-│       ├── ­ƒôü utils/
+│       ├── utils/
 │       │   ├── layout.ts          # Dagre auto-layout (webview-side)
-│       │   └── theme.ts           # VS Code theme ÔåÆ CSS vars
-│       └── ­ƒôü styles/
+│       │   └── theme.ts           # VS Code theme → CSS vars
+│       └── styles/
 │           └── globals.css        # Blue Ocean CSS variables + utility classes
 │
-├── ­ƒôü test/
+├── test/
 │   ├── runTests.js                # E2E test runner
-│   ├── ­ƒôü fixtures/
+│   ├── fixtures/
 │   │   ├── simple.Jenkinsfile     # 3-stage declarative pipeline
 │   │   ├── parallel.Jenkinsfile   # Parallel stages example
 │   │   └── complex.Jenkinsfile    # Full-featured pipeline
-│   └── ­ƒôü suite/
-│       └── parser.test.ts        # 19 Vitest unit tests
+│   └── suite/
+│       └── parser.test.ts         # 19 Vitest unit tests
 │
-├── ­ƒôü docs/
-│   ├── PHASE1.md ÔÇö PHASE6.md     # Phase-by-phase build notes
+├── docs/
+│   └── PHASE1.md — PHASE6.md     # Phase-by-phase build notes
 │
-└── ­ƒôü dist/                        # Build output (git-ignored)
+└── dist/                          # Build output (git-ignored)
     ├── extension.js               # Bundled extension host
-    └── ­ƒôü webview/
-        ├── main.js               # Bundled React app
-        └── main.css              # Bundled styles
+    └── webview/
+        ├── main.js                # Bundled React app
+        └── main.css               # Bundled styles
 ```
 
 ---
@@ -432,7 +432,7 @@ PlanesZwalker.vscode-jenkins-node-editor
 
 ### From Source
 
-**Prerequisites:** Node.js ÔëÑ 20, npm ÔëÑ 10, VS Code ÔëÑ 1.85
+**Prerequisites:** Node.js ≥ 20, npm ≥ 10, VS Code ≥ 1.85
 
 ```bash
 git clone https://github.com/PlanesZwalker/vscode-jenkins-node-editor.git
@@ -460,7 +460,7 @@ Open VS Code Settings (`Ctrl+,`) and search for **Jenkins Node Editor**:
 | `jenkinsNodeEditor.autoLayout` | boolean | `true` | Auto-layout the graph when opening a file. When `false`, only nodes **without** a saved position are laid out — your manual placements are always kept. |
 | `jenkinsNodeEditor.syncDelay` | number | `300` | Debounce delay (ms) before syncing graph → text. |
 
-> ÔÜá´©Å `jenkinsNodeEditor.jenkinsToken` has been **deprecated**. Use the secure command below instead.
+> ⚠️ `jenkinsNodeEditor.jenkinsToken` has been **deprecated**. Use the secure command below instead.
 
 ### Setting the Jenkins API Token (secure)
 
@@ -470,11 +470,11 @@ Open VS Code Settings (`Ctrl+,`) and search for **Jenkins Node Editor**:
 
 The token can also be set from the command palette:
 
-The token is stored in VS Code's **encrypted SecretStorage**, not in `settings.json`:
+```
+Ctrl+Shift+P → Jenkins: Set Jenkins API Token (Secure)
+```
 
-```
-Ctrl+Shift+P ÔåÆ Jenkins: Set Jenkins API Token (Secure)
-```
+The token is stored in VS Code's **encrypted SecretStorage**, not in `settings.json`:
 
 On first launch, any token already in `settings.json` is **automatically migrated** to SecretStorage and removed from the file.
 
@@ -496,7 +496,7 @@ On first launch, any token already in `settings.json` is **automatically migrate
 ### Opening the Node Editor
 
 1. Open any file named `Jenkinsfile`, `*.jenkinsfile`, `*.Jenkinsfile`, or `Jenkinsfile.*`
-2. Click the **Jenkins Node Editor** icon in the editor title bar, **or** right-click the file in the Explorer ÔåÆ _Open Jenkins Node Editor_
+2. Click the **Jenkins Node Editor** icon in the editor title bar, **or** right-click the file in the Explorer → _Open Jenkins Node Editor_
 3. The graph panel opens beside the text editor
 
 ### Editing Nodes
@@ -505,13 +505,13 @@ On first launch, any token already in `settings.json` is **automatically migrate
 |--------|-----|
 | **Select node** | Click any node |
 | **Move node** | Drag the node |
-| **Edit properties** | Select node ÔåÆ Inspector panel (right) |
+| **Edit properties** | Select node → Inspector panel (right) |
 | **Add node** | Drag from the Node Palette (left) |
 | **Delete node** | Select + `Delete` key |
-| **Connect nodes** | Drag from a node's output handle (ÔùÅ) to another's input |
-| **Undo / Redo** | `Ôå® Undo` / `Ôå¬ Redo` buttons in Toolbar (or use the toolbar buttons) |
-| **Auto-layout** | `Ôè× Layout` button in Toolbar |
-| **Fit view** | `Ôèí Fit` button in Toolbar |
+| **Connect nodes** | Drag from a node's output handle (▶) to another's input |
+| **Undo / Redo** | `↩ Undo` / `↪ Redo` buttons in Toolbar (or use the toolbar buttons) |
+| **Auto-layout** | `⊠ Layout` button in Toolbar |
+| **Fit view** | `↓ Fit` button in Toolbar |
 | **Zoom** | Scroll wheel / pinch |
 | **Pan** | Middle-click drag |
 | **Keyboard help** | `? Help` button in Toolbar |
@@ -535,7 +535,7 @@ When a build is running, the **Log Panel** shows at the bottom and streams log l
 | **API token** | Stored in VS Code `SecretStorage` (OS-level encrypted), never in `settings.json` or committed to source control |
 | **Token migration** | Existing `settings.json` tokens are auto-migrated to SecretStorage on first open, then removed from the file |
 | **CSRF protection** | `JenkinsClient` fetches `/crumbIssuer/api/json` before every POST; crumb cached per client instance, invalidated on HTTP 403 |
-| **Content Security Policy** | Webview uses a strict CSP with a per-session nonce ÔÇö no `unsafe-eval`, no plain `unsafe-inline` for scripts |
+| **Content Security Policy** | Webview uses a strict CSP with a per-session nonce — no `unsafe-eval`, no plain `unsafe-inline` for scripts |
 | **No external network** | The webview has no internet access; all Jenkins calls go through the extension host |
 
 ---
@@ -557,7 +557,7 @@ npm run publish       # Publish to Marketplace (requires vsce login)
 ### Debugging with F5
 
 1. Open the workspace in VS Code
-2. Press `F5` ÔåÆ launches **Extension Development Host**
+2. Press `F5` → launches **Extension Development Host**
 3. In the new window, open a `Jenkinsfile`
 4. Set breakpoints in `src/extension/` for extension host code
 5. For webview debugging: open _Developer Tools_ (`Ctrl+Shift+I`) and inspect the `<iframe>`
@@ -566,7 +566,7 @@ npm run publish       # Publish to Marketplace (requires vsce login)
 
 1. Add the new `NodeKind` literal to `src/shared/types.ts`
 2. Create `src/webview/nodes/MyNewNode.tsx` extending `BaseNode`
-3. Register it in `src/webview/nodes/index.ts` (module-level constant ÔÇö **not** inside a component)
+3. Register it in `src/webview/nodes/index.ts` (module-level constant — **not** inside a component)
 4. Add a palette entry in `src/webview/components/NodePalette.tsx`
 5. Add an inspector section in `NodeInspector.tsx`
 6. Handle the kind in `JenkinsfileParser.ts` and `JenkinsfileGenerator.ts`
@@ -583,6 +583,7 @@ npm run publish       # Publish to Marketplace (requires vsce login)
 - **Never regenerate the whole file** — the graph is lossy, so a full regeneration destroys unmodelled constructs. `applyGraphToDocument` computes a minimal-diff edit (`surgicalEdit.ts`) and refuses edits that would delete >50% of a large file.
 - **The generator must be faithful** — it emits no blank lines, keeps `post` in source order, and never invents optional args (`fingerprint`). Any cosmetic divergence turns a no-op into a full-file diff.
 - **Match the document's EOL before diffing** — the generator emits LF; a CRLF Jenkinsfile diffed against LF reads as "every line changed". `normalizeEol()` runs before `computeMinimalEdit`.
+
 ---
 
 ## Testing
@@ -713,8 +714,7 @@ never overlap.
 
 ## License
 
-Apache 2.0 ┬® 2026 [PlanesZwalker](https://github.com/PlanesZwalker) ÔÇö see [LICENSE](LICENSE) for details.
-
+Apache 2.0 © 2026 [PlanesZwalker](https://github.com/PlanesZwalker) — see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
