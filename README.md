@@ -2,6 +2,8 @@
 
 <div align="center">
 
+<img src="media/screenshot-main.png" alt="Jenkins Node Editor" width="800" />
+
 > **Turn any `Jenkinsfile` into an interactive visual node graph — edit it, run builds, and stream logs, all without leaving VS Code.**
 
 ![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.85.0-007ACC?logo=visual-studio-code&logoColor=white)
