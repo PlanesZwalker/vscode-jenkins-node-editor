@@ -2,8 +2,6 @@
 
 <div align="center">
 
-<img src="media/icon.png" alt="Jenkins Node Editor icon" width="128" height="128" />
-
 > **Turn any `Jenkinsfile` into an interactive visual node graph — edit it, run builds, and stream logs, all without leaving VS Code.**
 
 ![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.85.0-007ACC?logo=visual-studio-code&logoColor=white)
@@ -20,28 +18,6 @@
 Jenkins Node Editor renders a `Jenkinsfile` as a **live, editable node graph** powered by [React Flow](https://reactflow.dev/). Changes in the graph are immediately reflected in the source file, and changes in the text editor instantly update the graph — a true **bidirectional sync**.
 
 The UI is styled after **Blue Ocean**, Jenkins' own modern pipeline visualization UI.
-
----
-
-## Screenshots
-
-### Main Editor View
-
-![Jenkins Node Editor - Main View](media/screenshot-main.png)
-
-*Visual node graph with Blue Ocean styling. Edit the graph and the Jenkinsfile updates in real-time.*
-
-### Node Inspector
-
-![Jenkins Node Editor - Inspector](media/screenshot-inspector.png)
-
-*Full property editor for every node type: environment variables, parameters, when conditions, and more.*
-
-### Build Log Streaming
-
-![Jenkins Node Editor - Logs](media/screenshot-logs.png)
-
-*Real-time build log streaming with status indicators. Trigger builds directly from the editor.*
 
 ---
 
