@@ -10,6 +10,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
+[![GitHub Release](https://img.shields.io/github/v/release/PlanesZwalker/vscode-jenkins-node-editor?logo=github&label=Release)](https://github.com/PlanesZwalker/vscode-jenkins-node-editor/releases/latest)
 
 </div>
 
@@ -45,13 +46,15 @@ The UI is styled after **Blue Ocean**, Jenkins' own modern pipeline visualizatio
 
 ## Installation
 
-### From VS Code Marketplace
+### From GitHub Releases
 
-Search for **"Jenkins Node Editor"** in the Extensions panel (`Ctrl+Shift+X`), or install by ID:
+Download the latest `.vsix` from the [Releases page](https://github.com/PlanesZwalker/vscode-jenkins-node-editor/releases/latest), then install it in VS Code:
 
+```bash
+code --install-extension vscode-jenkins-node-editor-0.8.0.vsix
 ```
-PlanesZwalker.vscode-jenkins-node-editor
-```
+
+Or drag-and-drop the `.vsix` file into the Extensions panel.
 
 ### From Source
 
@@ -199,5 +202,6 @@ Apache 2.0 © 2026 [PlanesZwalker](https://github.com/PlanesZwalker) — see [LI
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
+[![GitHub Release](https://img.shields.io/github/v/release/PlanesZwalker/vscode-jenkins-node-editor?logo=github&label=Release)](https://github.com/PlanesZwalker/vscode-jenkins-node-editor/releases/latest)
 
 </div>
